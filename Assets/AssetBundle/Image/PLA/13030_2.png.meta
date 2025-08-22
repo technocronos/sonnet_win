@@ -1,0 +1,433 @@
+fileFormatVersion: 2
+guid: 931478e4e6c24cb439c11f4ab06b549a
+TextureImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 12
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+  isReadable: 1
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMasterTextureLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 0
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  cookieLightType: 1
+  platformSettings:
+  - serializedVersion: 3
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: iPhone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: Server
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites: []
+    outline: []
+    physicsShape: []
+    bones:
+    - name: Root
+      guid: 82fcb39c473d12b4a8e04345231e3f9e
+      position: {x: 181.22057, y: 25.23482, z: 0}
+      rotation: {x: 0, y: 0, z: 0.7071068, w: 0.7071068}
+      length: 37.90102
+      parentId: -1
+      color:
+        serializedVersion: 2
+        rgba: 4278190335
+    - name: Root2
+      guid: a177c0fc01c341d4b9ffb6df073147ea
+      position: {x: 177.54956, y: -34.32512, z: 0}
+      rotation: {x: 0, y: 0, z: 0.995259, w: 0.09726073}
+      length: 27.791365
+      parentId: 0
+      color:
+        serializedVersion: 2
+        rgba: 4294934528
+    - name: Face1
+      guid: 6e4367ca8e08303458ebf67d5d8a2fb7
+      position: {x: 71.9453, y: 0.000115664945, z: 0}
+      rotation: {x: 0, y: 0, z: -0.00196948, w: 0.9999981}
+      length: 57.32206
+      parentId: 6
+      color:
+        serializedVersion: 2
+        rgba: 4294967040
+    - name: RLEG4
+      guid: 307b68ccc9b58174ead8f2f3809497be
+      position: {x: 5.284628, y: 36.18312, z: 0}
+      rotation: {x: 0, y: 0, z: 0.8178255, w: 0.5754664}
+      length: 20.544086
+      parentId: 0
+      color:
+        serializedVersion: 2
+        rgba: 4278255615
+    - name: LLEG4
+      guid: a4388ce63d0aab94d8fbdbd2a035c906
+      position: {x: 17.165184, y: -37.85801, z: 0}
+      rotation: {x: 0, y: 0, z: 0.7694068, w: -0.6387592}
+      length: 10.256561
+      parentId: 0
+      color:
+        serializedVersion: 2
+        rgba: 4294902015
+    - name: Body1
+      guid: 9c30b1381c6c29f4d89c5a5054037687
+      position: {x: 5.651046, y: -8.284083, z: 0}
+      rotation: {x: 0, y: 0, z: -0.994502, w: 0.10471777}
+      length: 34.6577
+      parentId: 1
+      color:
+        serializedVersion: 2
+        rgba: 4294901888
+    - name: Body2
+      guid: 39006a05e67ceca4f8958aff98e1f4c9
+      position: {x: 34.657738, y: 0.000021006384, z: 0}
+      rotation: {x: 0, y: 0, z: 0.006911863, w: 0.99997616}
+      length: 71.945305
+      parentId: 5
+      color:
+        serializedVersion: 2
+        rgba: 4278255615
+    - name: RARM1
+      guid: d7f8ecd5634fa9a49bfba5abe1fd4cd8
+      position: {x: 48.391777, y: 24.100204, z: 0}
+      rotation: {x: 0, y: 0, z: 0.9416276, w: 0.33665633}
+      length: 34.084675
+      parentId: 6
+      color:
+        serializedVersion: 2
+        rgba: 4294902015
+    - name: RARM2
+      guid: ccbf8c91f20ae164f80e625a66985114
+      position: {x: 34.0847, y: 0.000016227765, z: 0}
+      rotation: {x: 0, y: 0, z: 0.5951963, w: 0.8035804}
+      length: 50.347095
+      parentId: 7
+      color:
+        serializedVersion: 2
+        rgba: 4278190335
+    - name: RARM3
+      guid: 1a3517c676107ed438bd84cc80329ce2
+      position: {x: 50.347095, y: 0.0000010023468, z: 0}
+      rotation: {x: 0, y: 0, z: 0.3541632, w: 0.9351837}
+      length: 12.331723
+      parentId: 8
+      color:
+        serializedVersion: 2
+        rgba: 4278255488
+    - name: LARM1
+      guid: 99865a48490a21b4aaea631261efe604
+      position: {x: 45.333378, y: -23.814661, z: 0}
+      rotation: {x: 0, y: 0, z: 0.95581126, w: -0.2939811}
+      length: 40.36369
+      parentId: 6
+      color:
+        serializedVersion: 2
+        rgba: 4286643968
+    - name: LARM2
+      guid: cba3423b1c7d48f45870d79de735f879
+      position: {x: 40.363724, y: -0.000019715051, z: 0}
+      rotation: {x: 0, y: 0, z: 0.39899948, w: 0.9169512}
+      length: 32.795086
+      parentId: 10
+      color:
+        serializedVersion: 2
+        rgba: 4294934528
+    - name: WEAPON
+      guid: 1a9f23c53d1d7c54c93df3cd4b3c502f
+      position: {x: 32.795086, y: -0.0000048105217, z: 0}
+      rotation: {x: 0, y: 0, z: -0.57679266, w: -0.81689054}
+      length: 79.28451
+      parentId: 11
+      color:
+        serializedVersion: 2
+        rgba: 4294901888
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 1537655665
+    vertices:
+    - {x: 209.713, y: 294.673}
+    - {x: 237.529, y: 309.176}
+    - {x: 260, y: 330.883}
+    - {x: 251.068, y: 375.839}
+    - {x: 206.697, y: 410.802}
+    - {x: 172.091, y: 444.089}
+    - {x: 171.48, y: 437.682}
+    - {x: 171.317, y: 393.65802}
+    - {x: 142.677, y: 410.675}
+    - {x: 143.375, y: 405.794}
+    - {x: 153, y: 355.739}
+    - {x: 134.189, y: 355.186}
+    - {x: 139.16699, y: 328.9}
+    - {x: 151.35901, y: 317.313}
+    - {x: 199.616, y: 291}
+    - {x: 205.39442, y: 351.94644}
+    - {x: 175.4875, y: 304.1565}
+    indices: 000000000f0000000100000000000000100000000f000000000000000e00000010000000010000000f00000002000000020000000f00000003000000030000000f00000004000000040000000600000005000000040000000700000006000000040000000f00000007000000070000000900000008000000070000000a00000009000000070000000f0000000a0000000a0000000c0000000b0000000a0000000d0000000c0000000a000000100000000d0000000a0000000f00000010000000
+    edges:
+    - {x: 0, y: 1}
+    - {x: 0, y: 14}
+    - {x: 1, y: 2}
+    - {x: 2, y: 3}
+    - {x: 3, y: 4}
+    - {x: 4, y: 5}
+    - {x: 5, y: 6}
+    - {x: 6, y: 7}
+    - {x: 7, y: 8}
+    - {x: 8, y: 9}
+    - {x: 9, y: 10}
+    - {x: 10, y: 11}
+    - {x: 11, y: 12}
+    - {x: 12, y: 13}
+    - {x: 13, y: 16}
+    - {x: 14, y: 16}
+    weights:
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    - weight[0]: 1
+      weight[1]: 0
+      weight[2]: 0
+      weight[3]: 0
+      boneIndex[0]: 2
+      boneIndex[1]: 0
+      boneIndex[2]: 0
+      boneIndex[3]: 0
+    secondaryTextures: []
+    nameFileIdTable: {}
+  spritePackingTag: 
+  pSDRemoveMatte: 0
+  pSDShowRemoveMatteOption: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

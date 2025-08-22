@@ -1,0 +1,11 @@
+using UnityEditor;
+using UnityEngine;
+
+public static class AddressableCacheClear
+{
+    [MenuItem("Tools/Addressables Cache Clear")]
+    private static void Delete()
+    {
+        Debug.Log(Caching.ClearCache() ? "Successfully cleaned the cache。" : "キャッシュが使用されています。");
+    }
+}
