@@ -94,7 +94,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
                 _bgmDic.Add(bgm.name, bgm);
             }
 
-            //Addressables.Release(handle);
+            Addressables.Release(handle);
         };
 
         Addressables.LoadAssetsAsync<AudioClip>("se", null).Completed += handle =>
@@ -117,12 +117,12 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
                 _seDic.Add(se.name, se);
             }
 
-            //Addressables.Release(handle);
+            Addressables.Release(handle);
         };
 
 
-        //Debug.Log("BGM_SOURCE_NUM=" + BGM_SOURCE_NUM);
-        //Debug.Log("SE_SOURCE_NUM=" + SE_SOURCE_NUM);
+        Debug.Log("BGM_SOURCE_NUM=" + BGM_SOURCE_NUM);
+        Debug.Log("SE_SOURCE_NUM=" + SE_SOURCE_NUM);
 
         //オーディオリスナーおよびオーディオソースをSE+BGMの分,作成
         gameObject.AddComponent<AudioListener>();

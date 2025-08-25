@@ -46,7 +46,7 @@ public class Title : BaseBehaviour
     private IEnumerator LoadAssets()
     {
         Debug.Log("Title LoadAssetsLabel start...");
-
+        /*
         string label = "default";
 
         //Check the download size
@@ -60,6 +60,7 @@ public class Title : BaseBehaviour
         AsyncOperationHandle downloadDependencies = Addressables.DownloadDependenciesAsync(label);
         yield return StartCoroutine(Main.Instance.ShowProgress(downloadDependencies, label));
 
+
         label = "bgm";
 
         AsyncOperationHandle<long> getDownloadSize_bgm = Addressables.GetDownloadSizeAsync(label);
@@ -71,10 +72,11 @@ public class Title : BaseBehaviour
         //If the download size is greater than 0, download all the dependencies.
         AsyncOperationHandle downloadDependencies_bgm = Addressables.DownloadDependenciesAsync(label);
         yield return StartCoroutine(Main.Instance.ShowProgress(downloadDependencies_bgm, label));
+        */
 
         AudioManager.Instance.Init();
 
-        StartCoroutine(reload());
+        yield return StartCoroutine(reload());
     }
 
     IEnumerator reload()
