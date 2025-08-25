@@ -9,6 +9,8 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: effectShader2Material
   m_Shader: {fileID: -6465566751694194690, guid: 595ed299a787d7246b4bb9b0b560b507, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
   m_InvalidKeywords: []
   m_LightmapFlags: 4
@@ -17,6 +19,7 @@ Material:
   m_CustomRenderQueue: -1
   stringTagMap: {}
   disabledShaderPasses: []
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
@@ -51,6 +54,8 @@ Material:
     m_Ints: []
     m_Floats:
     - _EnableExternalAlpha: 0
+    - _QueueControl: 0
+    - _QueueOffset: 0
     m_Colors:
     - Color_1d8be90c4d184f63a9cdef99a129add1: {r: 2.4622889, g: 2.4622889, b: 2.4622889, a: 1}
     - Color_31f2fea4c4924516b43c597447ea927c: {r: 1, g: 1, b: 1, a: 1}
@@ -71,4 +76,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  version: 5
+  version: 7

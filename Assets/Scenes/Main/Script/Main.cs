@@ -187,13 +187,6 @@ public class Main : BaseBehaviour, IAppsFlyerConversionData
         }
     }
 
-    private void OnFirebaseLogin(string json)
-    {
-        Debug.Log("OnFirebaseLogin start..");
-
-        SceneController.Instance.Init("Title", null, tapGuard);
-    }
-
     public void ShowPurchase(PurchaseBehaviour.EventCallback _eventCallback = null)
     {
         Purchase.gameObject.SetActive(true);

@@ -21,11 +21,13 @@ ScriptedImporter:
     convertToNormalMap: 0
     heightScale: 0.25
     normalMapFilter: 0
+    flipGreenChannel: 0
+    swizzle: 50462976
     isReadable: 0
     streamingMipmaps: 1
     streamingMipmapsPriority: 0
     vTOnly: 0
-    ignoreMasterTextureLimit: 0
+    ignoreMipmapLimit: 0
     nPOTScale: 1
     sRGBTexture: 1
     spriteMode: 2
@@ -88,7 +90,6 @@ ScriptedImporter:
     indices: 
     edges: []
     tessellationDetail: 0
-    parentGroupIndex: -1
     uvTransform: {x: 0, y: 0}
     spritePosition: {x: 0, y: 0}
   mosaicSpriteImportData: []
@@ -660,7 +661,6 @@ ScriptedImporter:
     - {x: 41, y: 42}
     - {x: 42, y: 43}
     tessellationDetail: 0
-    parentGroupIndex: -1
     uvTransform: {x: 4, y: 496}
     spritePosition: {x: 0, y: 153}
   - name: CharaImage6
@@ -1055,7 +1055,6 @@ ScriptedImporter:
     - {x: 24, y: 25}
     - {x: 25, y: 26}
     tessellationDetail: 0
-    parentGroupIndex: -1
     uvTransform: {x: 594, y: 570}
     spritePosition: {x: 0, y: 195}
   - name: CharaImage5
@@ -1547,7 +1546,6 @@ ScriptedImporter:
     - {x: 38, y: 39}
     - {x: 39, y: 40}
     tessellationDetail: 0
-    parentGroupIndex: -1
     uvTransform: {x: 594, y: 314}
     spritePosition: {x: 0, y: 252}
   - name: CharaImage4
@@ -2072,7 +2070,6 @@ ScriptedImporter:
     - {x: 35, y: 36}
     - {x: 36, y: 37}
     tessellationDetail: 0
-    parentGroupIndex: -1
     uvTransform: {x: 594, y: 4}
     spritePosition: {x: 0, y: 198}
   - name: CharaImage3
@@ -2873,7 +2870,6 @@ ScriptedImporter:
     - {x: 52, y: 53}
     - {x: 58, y: 59}
     tessellationDetail: 0
-    parentGroupIndex: -1
     uvTransform: {x: 4, y: 4}
     spritePosition: {x: 0, y: 16}
   - name: CharaImage2
@@ -3418,7 +3414,6 @@ ScriptedImporter:
     - {x: 37, y: 38}
     - {x: 38, y: 39}
     tessellationDetail: 0
-    parentGroupIndex: -1
     uvTransform: {x: 287, y: 4}
     spritePosition: {x: 0, y: 79}
   - name: CharaImage1
@@ -4120,7 +4115,6 @@ ScriptedImporter:
     - {x: 43, y: 44}
     - {x: 44, y: 45}
     tessellationDetail: 0
-    parentGroupIndex: -1
     uvTransform: {x: 287, y: 433}
     spritePosition: {x: 0, y: 127}
   characterData:
@@ -4308,6 +4302,7 @@ ScriptedImporter:
       order: 0
     dimension: {x: 0, y: 0}
     characterGroups: []
+    pivot: {x: 0, y: 0}
     boneReadOnly: 0
   sharedRigSpriteImportData: []
   sharedRigCharacterData:
@@ -4315,6 +4310,7 @@ ScriptedImporter:
     parts: []
     dimension: {x: 0, y: 0}
     characterGroups: []
+    pivot: {x: 0, y: 0}
     boneReadOnly: 0
   platformSettings: []
   mosaicLayers: 1
@@ -4327,6 +4323,10 @@ ScriptedImporter:
   paperDollMode: 0
   keepDupilcateSpriteName: 1
   skeletonAssetReferenceID: 
+  pipeline: {instanceID: 0}
+  pipelineVersion: 
+  padding: 4
+  spriteSizeExpand: 0
   spriteCategoryList:
     categories: []
   spritePackingTag: 
@@ -4405,6 +4405,9 @@ ScriptedImporter:
     isVisible: 1
   sharedRigPSDLayers: []
   pSDLayerImportSetting: []
+  importFileNodeState: 1
+  platformSettingsDirtyTick: 0
+  spriteSizeExpandChanged: 0
   generateGOHierarchy: 0
   textureAssetName: 
   prefabAssetName: 
