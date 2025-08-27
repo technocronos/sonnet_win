@@ -8,7 +8,7 @@ namespace Scenes.Common.Scripts
     {
         public static string APP_BANDLE_ID = "jp.technocronos.sonnet";
 
-        public static string Domain = "https";
+        public static string Domain = "http";
         public static string PREF_KEY_HIS_USER_ID = "PREF_KEY_HIS_USER_ID";
         public static string LANGUAGE_SELECTED = "LANGUAGE_SELECTED";
         public static string LANGUAGE_SELECTED_KEY = "LANGUAGE_SELECTED_KEY";
@@ -49,19 +49,12 @@ namespace Scenes.Common.Scripts
         public const bool IsDevelop = false;
 #else
         public const string Environment = "開発環境";
-        public static string Host = "test.native.sonnet.crns-game.net";
+        public static string Host = "localhost:8080";
         public static string RsourceHost = "test.native.sonnet.crns-game.net";
         public const bool IsDevelop = true;
 #endif
 
-
-#if UNITY_ANDROID
-        public static string ver = "111";
-#elif UNITY_IOS
-        public static string ver = "60";
-#else
         public static string ver = "115";
-#endif
 
         public static string IOS_APP_ID = "1372485938";
     }

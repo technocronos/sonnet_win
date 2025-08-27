@@ -13,8 +13,8 @@ public class StartUp
         PlayerSettings.keystorePass = "ME2U537M";
         PlayerSettings.keyaliasPass = "ME2U537M";
 #else
-        PlayerSettings.keystorePass = "android";
-        PlayerSettings.keyaliasPass = "android";
+        PlayerSettings.Android.keystorePass = "android";
+        PlayerSettings.Android.keyaliasPass = "android";
 #endif
     }
 
