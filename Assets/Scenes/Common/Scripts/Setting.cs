@@ -8,7 +8,6 @@ namespace Scenes.Common.Scripts
     {
         public static string APP_BANDLE_ID = "jp.technocronos.sonnet";
 
-        public static string Domain = "https";
         public static string PREF_KEY_HIS_USER_ID = "PREF_KEY_HIS_USER_ID";
         public static string LANGUAGE_SELECTED = "LANGUAGE_SELECTED";
         public static string LANGUAGE_SELECTED_KEY = "LANGUAGE_SELECTED_KEY";
@@ -25,7 +24,6 @@ namespace Scenes.Common.Scripts
         public static string EASYMODE_SPHEREID = "EASYMODE_SPHEREID";
         public static string EASYMODE_SPHERE = "EASYMODE_SPHERE";
 
-
         public static string RESOURCE_HASH = "RESOURCE_HASH";
 
         public static string CHANNELID_AP_RECV = "AP_RECV";
@@ -36,32 +34,23 @@ namespace Scenes.Common.Scripts
         public static string YOUR_ONESIGNAL_APP_ID = "645981aa-d521-4766-819e-2b57668f998d";
 
         public static string AP_DEVKEY = "rokG9uJaSGjzDqqJ9n98i4";
-#if UNITY_ANDROID
-        public static string AP_APPID = "";
-#else
         public static string AP_APPID = "1372485938";
-#endif
 
 #if RELEASE
         public const string Environment = "本番環境";
+        public static string Domain = "https";
         public static string Host = "native.sonnet.crns-game.net";
         public static string RsourceHost = "crns-games.win";
         public const bool IsDevelop = false;
 #else
         public const string Environment = "開発環境";
-        public static string Host = "test.native.sonnet.crns-game.net";
+        public static string Domain = "http";
+        public static string Host = "localhost:8080";
         public static string RsourceHost = "test.native.sonnet.crns-game.net";
         public const bool IsDevelop = true;
 #endif
 
-
-#if UNITY_ANDROID
-        public static string ver = "111";
-#elif UNITY_IOS
-        public static string ver = "60";
-#else
-        public static string ver = "115";
-#endif
+        public static string ver = "1";
 
         public static string IOS_APP_ID = "1372485938";
     }
