@@ -76,8 +76,8 @@ public class BattleBehaviour : BaseBehaviour
     public static int FRAME_RATE { get; set; } = 60;
 
     // ステージの幅・高さ
-    public static float STAGE_WIDTH { get; set; } = 750;
-    public static float STAGE_HEIGHT { get; set; } = 2000;
+    public static float STAGE_WIDTH { get; set; } = 1920;
+    public static float STAGE_HEIGHT { get; set; } = 1080;
 
     public static float BOTTOM_POS { get; set; } = -947.8125f;
 

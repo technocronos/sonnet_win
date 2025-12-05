@@ -56,20 +56,24 @@ public class DamShowBehaviour : MonoBehaviour
         // ダイナミックテキストにダメージの値をセット。
         Shower.transform.Find("value").GetComponent<TextMeshProUGUI>().text = value.ToString();
 
+        int marginX = 450;
+        int marginY = 70;
+
         // 飛び出す開始位置と終了位置を決める。
         if (side == "P")
         {
             startX = BattleBehaviour.HIT_XP;
             startY = BattleBehaviour.HIT_YP;
-            destX = ((BattleBehaviour.STAGE_WIDTH / 2) - (110 / 2) - 10) * -1;
-            destY = startY + (17 * (dir - 1));
+            destX = ((BattleBehaviour.STAGE_WIDTH / 2) - marginX) * -1;
+            destY = startY + (marginY * (dir - 1));
+            Debug.Log("destY=" + destY + " destX = " + destX);
         }
         else
         {
             startX = BattleBehaviour.HIT_XE;
             startY = BattleBehaviour.HIT_YE;
-            destX = (BattleBehaviour.STAGE_WIDTH / 2) - (110 / 2) - 10;
-            destY = startY + (17 * (dir - 1));
+            destX = (BattleBehaviour.STAGE_WIDTH / 2) - marginX;
+            destY = startY + (marginY * (dir - 1));
         }
 
         //開始位置にセット

@@ -99,8 +99,8 @@ public class SphereBehaviour : BaseBehaviour
     public int BOTTOM_MARGIN { get; set; } = 2;
 
     // マップチップの大きさ
-    public int TIP_SIZE { get; set; } = 75;
-    public int UNIT_SIZE { get; set; } = 72;
+    public int TIP_SIZE { get; set; } = 110;
+    public int UNIT_SIZE { get; set; } = 105;
 
     // 行動ptの最大値
     public int ACTPT_MAX { get; set; } = 100;

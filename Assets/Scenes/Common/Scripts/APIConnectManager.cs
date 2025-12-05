@@ -2682,8 +2682,6 @@ public class jsonBattleBuyItem
 
 }
 
-
-
 [Serializable]
 public class jsonFieldEnd
 {

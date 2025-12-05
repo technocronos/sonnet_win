@@ -97,7 +97,7 @@ public class FieldEndBehaviour : BaseBehaviour
         }
 
         //ミッション達成の場合
-        if (response.summary.mission.achieve)
+        if (response.summary.mission != null && response.summary.mission.achieve)
         {
             Mission.gameObject.SetActive(true);
             Mission.Show(response.summary.mission);
@@ -108,7 +108,7 @@ public class FieldEndBehaviour : BaseBehaviour
         }
 
         //次のクエストがある場合
-        if (response.next.quest_id != 0)
+        if (response.next != null && response.next.quest_id != 0)
         {
             NextQuestTitle.SetActive(true);
             TextNextQuest.text = response.next.quest_name;
