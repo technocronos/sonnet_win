@@ -6,7 +6,7 @@ using UnityEngine.SceneManagement;//シーン用
 using UnityEngine.EventSystems; //必須 (旧SendMessge)RecieveDestroyInterface のメッセージシステムに必要
 using System;
 
-namespace CreateWave
+namespace MyScene
 {
     public class SceneController : EventDispatcher
     {

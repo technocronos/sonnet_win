@@ -512,7 +512,7 @@ public class UserBehaviour : MonoBehaviour
                 // 中断の場合は、中断用URLに遷移するようにする。
                 if (itemNo == -1)
                 {
-                    Sphere.leader.transUrl = "scene=Home";
+                    Sphere.leader.transUrl = "scene=Quest";
                     Sphere.Trans();
                 }
                 else

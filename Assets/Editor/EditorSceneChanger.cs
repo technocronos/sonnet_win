@@ -18,7 +18,7 @@ public class EditorSceneChanger : EditorWindow
 	/// <summary>
 	/// シーンを開く拡張ウィンドウを開く.
 	/// </summary>
-    [MenuItem ("CreateWave/Scene/Scenes")]
+    [MenuItem ("MyMenu/Scene/Scenes")]
 	public static void Init()
 	{
         GetWindow<EditorSceneChanger> ("Scenes");

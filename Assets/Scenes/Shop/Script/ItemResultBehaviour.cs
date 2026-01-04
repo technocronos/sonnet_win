@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using CreateWave;
+using MyScene;
 using DG.Tweening;
 
 public class ItemResultBehaviour : MonoBehaviour
 {
+    public Shop Shop;
     public Image ItemIcon;
 
     public Image ResultIcon1;
@@ -130,9 +131,9 @@ public class ItemResultBehaviour : MonoBehaviour
                     }
                     else
                     {
-                        ShopBehaviour.Instance.listClear();
+                        Shop.listClear();
                         //APIをたたく
-                        APIConnectManager.Instance.ShopList(this.category, this.currency, ShopBehaviour.Instance.onStart);
+                        APIConnectManager.Instance.ShopList(this.category, this.currency, Shop.onStart);
                     }
 
                     btnOk.onClick.RemoveAllListeners();

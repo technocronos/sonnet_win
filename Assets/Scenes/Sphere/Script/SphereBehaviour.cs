@@ -5,7 +5,7 @@ using UnityEngine;
 using TMPro;
 using System;
 using UnityEngine.UI;
-using CreateWave;
+using MyScene;
 using Scenes.Common.Scripts;
 using DG.Tweening;
 

@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using CreateWave;
+using MyScene;
 using System.Web;
 using UnityEngine.Networking;
 

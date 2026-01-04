@@ -1,6 +1,6 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
-using CreateWave;
+using MyScene;
 using UnityEngine;
 using DG.Tweening;
 using UnityEngine.UI;
@@ -96,7 +96,7 @@ public class Title : BaseBehaviour
         //登録済み
         else if (LoginInfo.regist == 1)
         {
-            next_scene = "Home";
+            next_scene = "Quest";
         }
         // エラー等で、ユーザレコードは出来てるのに、キャラクターレコードが出来てない場合。
         else if (LoginInfo.regist == 2)
@@ -115,6 +115,11 @@ public class Title : BaseBehaviour
 
     public void OnStart()
     {
+        if(AudioManager.Instance._seDic == null)
+        {
+            Debug.Log("AudioManager initialized ng");
+            return;
+        }
 
         if (!AudioManager.Instance._seDic.ContainsKey("se_btn"))
         {
@@ -190,6 +195,13 @@ public class Title : BaseBehaviour
                     {
                         TutorialBehaviour tutorial = FindObjectOfType<TutorialBehaviour>() as TutorialBehaviour;
                         tutorial.Param = new TutorialBehaviour.Parameter { TutorialStep = this.TutorialStep };
+                    }else if(next_scene == "Quest")
+                    {
+                        Quest _q = FindObjectOfType<Quest>() as Quest;
+                        _q.Param = new Quest.Parameter
+                        {
+                            panel = "QuestList"
+                        };
                     }
                 }));
             }

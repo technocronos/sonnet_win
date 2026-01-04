@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using CreateWave;
+using MyScene;
 using TMPro;
 using UnityEngine.UI;
 using DG.Tweening;
@@ -533,7 +533,7 @@ public class ResultPhaseBehaviour : MonoBehaviour
         if (response.battle.tournament_id == 1)
             Trans(response.urlOnRivalList);
         else
-            Trans(response.urlOnHome);
+            Trans("scene=Quest");
     }
 
     //右ボタンクリック時イベントハンドラ

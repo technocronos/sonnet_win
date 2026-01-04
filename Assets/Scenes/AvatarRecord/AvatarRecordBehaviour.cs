@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using CreateWave;
+using MyScene;
 using Scenes.Common.Scripts;
 
 public class AvatarRecordBehaviour : BaseBehaviour

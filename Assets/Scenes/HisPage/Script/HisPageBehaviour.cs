@@ -7,7 +7,7 @@ using DG.Tweening;
 using Newtonsoft.Json;
 using System;
 using System.Threading.Tasks;
-using CreateWave;
+using MyScene;
 using Scenes.Common.Scripts;
 
 public class HisPageBehaviour : BaseBehaviour

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -6,7 +6,7 @@ using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using CreateWave;
+using MyScene;
 using Scenes.Common.Scripts;
 using UnityEngine.Localization.Settings;
 
@@ -389,7 +389,14 @@ public class Home : BaseBehaviour
     {
         AudioManager.Instance.PlaySE("se_btn");
 
-        SceneController.Instance.Jump("Quest");
+        SceneController.Instance.Jump("Quest",(() =>
+        {
+            Quest _q = FindObjectOfType<Quest>() as Quest;
+            _q.Param = new Quest.Parameter
+            {
+                panel = "QuestList"
+            };
+        }));
     }
 
     public void onBattleClick()

@@ -7,16 +7,16 @@ using System.IO;
 using System.Net;
 using System.Text;
 
-public class CreateWaveSetting : EditorWindow
+public class MyMenuSetting : EditorWindow
 {
 
-    [MenuItem("CreateWave/PlayerPrefs全削除")]
+    [MenuItem("MyMenu/PlayerPrefs全削除")]
     static void DeleteUserId()
     {
         PlayerPrefs.DeleteAll();
     }
     
-    [MenuItem("CreateWave/PlayerPrefsキャッシュ全削除")]
+    [MenuItem("MyMenu/PlayerPrefsキャッシュ全削除")]
     static void PlayerPrefsDelete()
     {
         PlayerPrefs.DeleteAll();
@@ -54,7 +54,7 @@ public class CreateWaveSetting : EditorWindow
     /// <summary>
     /// メイン画面からPlayします.
     /// </summary>
-    [MenuItem ("CreateWave/Scene/MainPlay")]
+    [MenuItem ("MyMenu/Scene/MainPlay")]
     static void PlayTitle ()
     {
         Change ("Assets/Scenes/Main/Main.unity");

@@ -18,6 +18,7 @@ public class Header : MonoBehaviour
     public TextMeshProUGUI Member;
     public Image APGauge;
     public Image BPGauge;
+    public TextMeshProUGUI TextLv;
 
     private Vector3 _startVector3;
     private static Header instance;
@@ -124,20 +125,19 @@ public class Header : MonoBehaviour
         ap_recover = 0f;
 
         //レベル
-        transform.Find("Overrap").Find("TextLv").GetComponent<Text>().text = summary.chara.level.ToString();
+        TextLv.text = summary.chara.level.ToString();
         //次のレベル
-        transform.Find("Overrap").Find("TextLvNext").GetComponent<Text>().text =
-            summary.exp.relative_exp.ToString() + "/" + summary.exp.relative_next;
+        //transform.Find("Overrap").Find("TextLvNext").GetComponent<Text>().text = summary.exp.relative_exp.ToString() + "/" + summary.exp.relative_next;
         //経験値
-        int posx = (int)(((summary.exp.relative_exp * 1.0f) / summary.exp.relative_next) * 167);
-        transform.Find("MaskLeft").Find("Left").localPosition = new Vector3(-167 + posx, 1, 0);
+        //int posx = (int)(((summary.exp.relative_exp * 1.0f) / summary.exp.relative_next) * 167);
+        //transform.Find("MaskLeft").Find("Left").localPosition = new Vector3(-167 + posx, 1, 0);
         //BP
-        transform.Find("Overrap").Find("TextBp").GetComponent<Text>().text = ((int)summary.matchPt).ToString();
+        //transform.Find("Overrap").Find("TextBp").GetComponent<Text>().text = ((int)summary.matchPt).ToString();
 
         //マグナ
         Gold.text = summary.gold.ToString();
         //仲間
-        Member.text = summary.member.current.ToString();
+        //Member.text = summary.member.current.ToString();
 
         if (transform.gameObject.activeInHierarchy)
             StartCoroutine("Recover");

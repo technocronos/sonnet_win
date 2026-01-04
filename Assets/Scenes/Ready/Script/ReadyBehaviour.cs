@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 using TMPro;
 using System;
 using UnityEngine.UI;
-using CreateWave;
+using MyScene;
 using Scenes.Common.Scripts;
 
 public class ReadyBehaviour : BaseBehaviour
@@ -56,7 +56,7 @@ public class ReadyBehaviour : BaseBehaviour
     {
         base.Start();
 
-        BG.sprite = Utility.getAssetImage("Image/BG/circle_bg");
+        //BG.sprite = Utility.getAssetImage("Image/BG/circle_bg");
 
         //safearea対応
         setSafearea("ReadyCanvas");

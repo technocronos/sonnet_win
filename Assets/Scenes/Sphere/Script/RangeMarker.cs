@@ -124,6 +124,118 @@ public class RangeMarker
         // カーソル最前面に移動
         Image _cursor = Stage.transform.Find("cursor").GetComponent<Image>();
         _cursor.GetComponent<RectTransform>().SetAsLastSibling();
+
+        // color == "move" の場合、すべての再帰が完了した時（stack == 0）にすべてのマーカーの画像を更新
+        if (color == "move" && stack == 0)
+        {
+            //UpdateMarkerSprites();
+        }
+    }
+
+    // すべてのマーカーの周囲を確認して、適切な画像を設定する
+    private void UpdateMarkerSprites()
+    {
+        foreach (KeyValuePair<string, MarkerBehaviour> keyValue in markObj)
+        {
+            if (keyValue.Value == null || !keyValue.Value.gameObject.activeSelf) continue;
+
+            Vector3 _mkpos = keyValue.Value.transform.localPosition;
+            int x = (int)(_mkpos.x / Sphere.TIP_SIZE);
+            int y = (int)((_mkpos.y / Sphere.TIP_SIZE) * -1);
+
+            // 周囲のマーカーの存在を確認
+            bool hasLeft = x > 0 && marks["mark" + (x - 1) + "_" + y] >= 0;
+            bool hasRight = x < Sphere.sphere.structWid - 1 && marks["mark" + (x + 1) + "_" + y] >= 0;
+            bool hasTop = y > 0 && marks["mark" + x + "_" + (y - 1)] >= 0;
+            bool hasBottom = y < Sphere.sphere.structHei - 1 && marks["mark" + x + "_" + (y + 1)] >= 0;
+
+            int adjacentCount = (hasLeft ? 1 : 0) + (hasRight ? 1 : 0) + (hasTop ? 1 : 0) + (hasBottom ? 1 : 0);
+
+            string markerType = "";
+
+            // 1. 上下左右にマーカーがある場合
+            if (hasLeft && hasRight && hasTop && hasBottom)
+            {
+                markerType = "2";
+            }
+            // 2. 角である場合（2つが隣接している）
+            else if (adjacentCount == 2)
+            {
+                if (hasTop && hasLeft) // このマーカーの左上にマーカーがある = このマーカーは右下の角
+                {
+                    markerType = "br";
+                }
+                else if (hasTop && hasRight) // このマーカーの右上にマーカーがある = このマーカーは左下の角
+                {
+                    markerType = "bl";
+                }
+                else if (hasBottom && hasLeft) // このマーカーの左下にマーカーがある = このマーカーは右上の角
+                {
+                    markerType = "ur";
+                }
+                else if (hasBottom && hasRight) // このマーカーの右下にマーカーがある = このマーカーは左上の角
+                {
+                    markerType = "ul";
+                }
+                else if (hasBottom && hasTop) 
+                {
+                    markerType = "lr";
+                }
+                else if (hasLeft && hasRight)
+                {
+                    markerType = "ub";
+                }
+            }
+            // 3方向に接している場合（1方向だけ接していない）
+            else if (adjacentCount == 3)
+            {
+                if (!hasTop) // 上だけ無い（左、右、下に接している）
+                {
+                    markerType = "u";
+                }
+                else if (!hasBottom) // 下だけ無い（左、右、上に接している）
+                {
+                    markerType = "b";
+                }
+                else if (!hasLeft) // 左だけ無い（右、上、下に接している）
+                {
+                    markerType = "l";
+                }
+                else if (!hasRight) // 右だけ無い（左、上、下に接している）
+                {
+                    markerType = "r";
+                }
+            }
+            // 4. 上に何もないようなケース（上方向だけに接している場合はrangemarker_b_uを使用）
+            // 左右下だけに接している場合も回転させて使用
+            // 5. どこか一個だけ接している場合はrangemarker_b_3を使用
+            // （ただし、rangemarker_b_3は右だけあいているので、上下左の場合は回転）
+            else if (adjacentCount == 1)
+            {
+                if (hasTop) // 上だけ - 条件4: rangemarker_b_uを使用
+                {
+                    markerType = "3_bottom";
+                }
+                else if (hasRight) // 右だけ - 条件5: rangemarker_b_3を使用
+                {
+                    markerType = "3_left";
+                }
+                else if (hasBottom) // 下だけ - 条件5: rangemarker_b_3を使用（回転）
+                {
+                    markerType = "3_top";
+                }
+                else if (hasLeft) // 左だけ - 条件5: rangemarker_b_3を使用（回転）
+                {
+                    markerType = "3_right";
+                }
+            }
+            // 6. その他は何もしない
+
+            if (!string.IsNullOrEmpty(markerType))
+            {
+                keyValue.Value.SetMarkerType(markerType);
+            }
+        }
     }
 
     // 

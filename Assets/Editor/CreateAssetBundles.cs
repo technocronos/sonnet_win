@@ -1,4 +1,4 @@
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 
 public class CreateAssetBundles
@@ -8,25 +8,25 @@ public class CreateAssetBundles
     public static string [] AssetBundleNames;
     
     
-    [MenuItem("CreateWave/Build AssetBundles/StandaloneWindows")]
+    [MenuItem("MyMenu/Build AssetBundles/StandaloneWindows")]
     static void BuildAllAssetBundlesStandaloneWindows()
     {
         BuildPipeline.BuildAssetBundles("Assets/StreamingAssets/StandaloneWindows", BuildAssetBundleOptions.ChunkBasedCompression,BuildTarget.StandaloneWindows);
     }
     
-    [MenuItem("CreateWave/Build AssetBundles/Android")]
+    [MenuItem("MyMenu/Build AssetBundles/Android")]
     static void BuildAllAssetBundlesAndroid()
     {
         BuildPipeline.BuildAssetBundles("Assets/StreamingAssets/Android", BuildAssetBundleOptions.ChunkBasedCompression,BuildTarget.Android);
     }
     
-    [MenuItem("CreateWave/Build AssetBundles/iOS")]
+    [MenuItem("MyMenu/Build AssetBundles/iOS")]
     static void BuildAllAssetBundlesiOS()
     {
         BuildPipeline.BuildAssetBundles("Assets/StreamingAssets/IOS", BuildAssetBundleOptions.ChunkBasedCompression,BuildTarget.iOS);
     }
     
-    [MenuItem ("CreateWave/Names/Test")]
+    [MenuItem ("MyMenu/Names/Test")]
     static void SetNamesTKPR ()
     {
         string [] guids = AssetDatabase.FindAssets ("t:texture2d", new string [] { ORG_PATH + "Test" });
@@ -45,7 +45,7 @@ public class CreateAssetBundles
         Debug.Log("WordフォルダのAssetBundlネームを設定しました");
     }
     /*
-    [MenuItem ("CreateWave/Names/Treasure")]
+    [MenuItem ("MyMenu/Names/Treasure")]
     static void SetNamesTKUT ()
     {
         string [] guids = AssetDatabase.FindAssets ("t:texture2d", new string [] { ORG_PATH + "Treasure" });
@@ -64,7 +64,7 @@ public class CreateAssetBundles
     }
     */
     /*
-    [MenuItem ("CreateWave/Names/Texture2D")]
+    [MenuItem ("MyMenu/Names/Texture2D")]
     static void SetNamesBG ()
     {
         string [] guids = AssetDatabase.FindAssets ("t:texture2d", new string [] { ORG_PATH + "Texture2D" });
@@ -81,7 +81,7 @@ public class CreateAssetBundles
         Debug.Log("Texture2DフォルダのAssetBundlネームを設定しました");
     }
     
-    [MenuItem ("CreateWave/Names/Prefab")]
+    [MenuItem ("MyMenu/Names/Prefab")]
     static void SetNamesChara ()
     {
         string [] guids = AssetDatabase.FindAssets ("t:prefab", new string [] { ORG_PATH + "Prefab" });
@@ -99,7 +99,7 @@ public class CreateAssetBundles
         Debug.Log("PrefabフォルダのAssetBundlネームを設定しました");
     }
     
-    [MenuItem ("CreateWave/Names/AudioClip")]
+    [MenuItem ("MyMenu/Names/AudioClip")]
     static void SetNamesAudio ()
     {
         string [] guids = AssetDatabase.FindAssets ("t:AudioClip", new string [] { ORG_PATH + "AudioClip" });

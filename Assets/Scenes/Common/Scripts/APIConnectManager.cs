@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 using Scenes.Common.Scripts;
-using CreateWave;
+using MyScene;
 using UnityEngine.AddressableAssets;
 using UnityEngine.Localization.Settings;
 using Steamworks;

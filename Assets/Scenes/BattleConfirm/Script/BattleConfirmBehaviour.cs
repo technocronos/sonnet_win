@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
-using CreateWave;
+using MyScene;
 
 public class BattleConfirmBehaviour : BaseBehaviour
 {

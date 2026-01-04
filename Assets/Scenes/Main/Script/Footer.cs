@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
-using CreateWave;
+using MyScene;
 using Scenes.Common.Scripts;
 
 public class Footer : MonoBehaviour

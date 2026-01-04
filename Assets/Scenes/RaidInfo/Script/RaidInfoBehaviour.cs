@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 using TMPro;
 using System;
 using UnityEngine.UI;
-using CreateWave;
+using MyScene;
 using Scenes.Common.Scripts;
 using UnityEngine.Localization.Settings;
 

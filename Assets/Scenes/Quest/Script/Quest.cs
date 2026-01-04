@@ -1,20 +1,35 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using Newtonsoft.Json;
+﻿using MyScene;
 using DG.Tweening;
-using UnityEngine.UI;
-using TMPro;
-using CreateWave;
+using Newtonsoft.Json;
 using Scenes.Common.Scripts;
+using StateManager;
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEditor.SceneManagement;
+using UnityEngine;
 using UnityEngine.Localization.Settings;
-
+using UnityEngine.Rendering.PostProcessing;
+using UnityEngine.UI;
 public class Quest : BaseBehaviour
 {
+    public GameObject Map;
+
     public Image BG;
 
     public Sprite Point_B;
     public Sprite Point_R;
+
+    public GameObject ButtonPanel;
+    public GameObject MypagePanel;
+    public GameObject EquipPanel;
+    public GameObject ShopPanel;
+    public GameObject BookPanel;
+
+    public Button Button_Mypage;
+    public Button Button_Equip;
+    public Button Button_Shop;
+    public Button Button_Book;
 
     //Imageをアタッチしておく
     public Image CaptionImage;
@@ -62,7 +77,7 @@ public class Quest : BaseBehaviour
     const float area_x_add = 0;
     const float area_y_add = 0;
 
-    const float scale = 1.5f;
+    const float scale = 1f;
 
     const float cursor_x_add = 30;
     const float cursor_y_add = 33;
@@ -82,9 +97,40 @@ public class Quest : BaseBehaviour
 
     public GameObject QuestList;
 
+    public Button questGiveup;
+
     jsonConstants constants;
 
+    public class Parameter
+    {
+        public string panel = "QuestList";
+
+    }
+
+    public Parameter Param;
+
+
     public Button BtnGlobal;
+
+    TouchManager _touch_manager { get; set; } = null;
+
+    private float touchstartX { get; set; }
+    private float touchstartY { get; set; }
+
+    private float _x { get; set; }
+    private float _y { get; set; }
+    private float _touchX { get; set; } = 0;
+    private float _touchY { get; set; } = 0;
+    //タッチイベント用。actで操作した座標を格納しておく。
+    public float _offsetX { get; set; } = 0;
+    public float _offsetY { get; set; } = 0;
+    public float offsetX { get; set; } = 0;
+    public float offsetY { get; set; } = 0;
+
+    public bool flick_lock { get; set; } = true;
+    public string quest_title { get; set; } = "";
+
+    public HomeApi homeSummary = null;
 
     // Start is called before the first frame update
     protected override void Start()
@@ -98,7 +144,7 @@ public class Quest : BaseBehaviour
 
         constants = APIConnectManager.Instance.login.constants;
 
-        QuestList.SetActive(true);
+        QuestList.SetActive(false);
 
         //クエストリストはまだ非表示
         ListPanel.SetActive(false);
@@ -119,10 +165,51 @@ public class Quest : BaseBehaviour
 
         Arrow.SetActive(false);
 
-        //APIをたたく
+        ButtonPanel.SetActive(true);
+        MypagePanel.SetActive(false);
+
+        Button_Mypage.onClick.AddListener(() =>
+        {
+            AudioManager.Instance.PlaySE("se_btn");
+            MypagePanel.SetActive(true);
+        });
+
+        if(Param == null)
+        {
+            Param = new Quest.Parameter
+            {
+                panel = "QuestList"
+            };            
+        }
+
+        APIConnectManager.Instance.Home(onLoaded);
+
+        // タッチ管理マネージャ生成
+        this._touch_manager = new TouchManager();
+
+        // あるべき画面位置をチップ単位で表している変数を初期化。
+        offsetX = 0;
+        offsetY = 0;
+
+        //タッチイベント用座標を初期化
+        _offsetX = 0;
+        _offsetY = 0;
+
+        flick_lock = true;
+
+    }
+
+    private void onLoaded(string json)
+    {
+        //API結果受け取り
+        homeSummary = JsonUtility.FromJson<HomeApi>(json);
+
+        Header.Instance.SetSummary(homeSummary);
+
         APIConnectManager.Instance.QuestList(onStart);
 
     }
+
     private void onStart(string json)
     {
         //API結果受け取り
@@ -133,7 +220,34 @@ public class Quest : BaseBehaviour
 
         Reload();
 
-        showQuestList(QuestInfo.currRegion, QuestInfo.currPlace);
+        switch (Param.panel) { 
+            case "QuestList":
+                QuestList.SetActive(true);
+                showQuestList(QuestInfo.currRegion, QuestInfo.currPlace);
+                break;
+            case "MyPage":
+                MypagePanel.SetActive(true);
+                break;
+        }
+
+        //実行中クエストがある場合
+        if (homeSummary.sally_quest.quest_id != 0)
+        {
+            //$("#bannar_panel").hide();
+            //クエストやめボタンイベントハンドラ
+            questGiveup.onClick.AddListener((() =>
+            {
+                AudioManager.Instance.PlaySE("se_btn");
+                this.showGiveup(homeSummary.sally_quest);
+            }));
+
+            questGiveup.gameObject.SetActive(true);
+
+        }
+        else
+        {
+            questGiveup.gameObject.SetActive(false);
+        }
 
         AudioManager.Instance.PlayBGM("bgm_menu", AudioManager.BGM_VOLUME_DEFULT);
 
@@ -219,6 +333,81 @@ public class Quest : BaseBehaviour
         return _QuestInfo;
     }
 
+    private void Update()
+    {
+
+        if (MypagePanel.active || EquipPanel.active || ShopPanel.active || BookPanel.active)
+        {
+            return;
+        }
+
+        // タッチ状態更新
+        this._touch_manager.update();
+
+        // タッチ取得
+        TouchManager touch_state = this._touch_manager.getTouch();
+
+        // タッチされていたら処理
+        if (touch_state._touch_flag)
+        {
+            float touch_x = (touch_state._touch_position.x) / Screen.width * transform.GetComponent<RectTransform>().rect.width;
+            float touch_y = (touch_state._touch_position.y) / Screen.height * transform.GetComponent<RectTransform>().rect.height;
+
+            //flick_lockがかかってる場合はリターン
+            if (flick_lock) return;
+
+
+            // タッチした瞬間の処理
+            if (touch_state._touch_phase == TouchPhase.Began)
+            {
+                //タッチ開始座標をとっておく
+                touchstartX = touch_x;
+                touchstartY = touch_y;
+
+                //開始時点の_offset値をとっておく
+                _x = _offsetX;
+                _y = _offsetY;
+
+            }
+            else if (touch_state._touch_phase == TouchPhase.Moved)
+            {
+
+                this._touchX = _x + (touch_x - touchstartX) ;
+                this._touchY = _y + (touch_y - touchstartY) ;
+
+                if (this._touchX > 0)
+                    this._touchX = 0;
+                else if (this._touchX < (transform.GetComponent<RectTransform>().rect.width * -1))
+                    this._touchX = transform.GetComponent<RectTransform>().rect.width * -1;
+
+                if (this._touchY < 0)
+                    this._touchY = 0;
+                else if (this._touchY > transform.GetComponent<RectTransform>().rect.height)
+                    this._touchY = transform.GetComponent<RectTransform>().rect.height;
+
+                //フリックする
+                onFlick();
+
+                _offsetX = this._touchX;
+                _offsetY = this._touchY;
+            }
+        }
+    }
+
+    public void onFlick()
+    {
+        if (touchstartX > 0 && touchstartY > 0)
+        {
+            Vector3 _stage = Map.transform.GetComponent<RectTransform>().anchoredPosition;
+
+            //X座標可動範囲
+            if ((_stage.x <= 0 && _stage.x >= transform.GetComponent<RectTransform>().rect.width * -1) && (_stage.y >= 0 && _stage.y <= transform.GetComponent<RectTransform>().rect.height))
+            {
+                Map.transform.GetComponent<RectTransform>().anchoredPosition = new Vector3(this._touchX, this._touchY, 0); 
+            }
+        }
+    }
+
     //---------------------------------------------------------------------------------------------------------
     /**
      * メイン処理
@@ -226,9 +415,11 @@ public class Quest : BaseBehaviour
     private void Reload()
     {
         //ヘッダー・フッターに情報を渡す
-        Header.Instance.SetTitle(this.currRegion != 0 ? QuestInfo.globalplace[currRegion].Name : Utility.getText("TEXT_GLOBALMAP"));
+        quest_title = this.currRegion != 0 ? QuestInfo.globalplace[currRegion].Name : Utility.getText("TEXT_GLOBALMAP");
+        Header.Instance.SetTitle(quest_title);
 
         //マップを差し替える
+        /*
         Image Map = transform.Find("QuestCanvas/MapPanel/Map").GetComponent<Image>();
         switch (this.currRegion)
         {
@@ -254,9 +445,10 @@ public class Quest : BaseBehaviour
                 Map.sprite = Utility.getAssetImage("Image/MoveMap/01");
                 break;
         }
+        */
 
         //コピー元表示
-        Button Point = transform.Find("QuestCanvas/MapPanel/PointPanel/Point").GetComponent<Button>();
+        Button Point = transform.Find("QuestCanvas/MapPanel/Map/PointPanel/Point").GetComponent<Button>();
         Point.GetComponent<Image>().enabled = true;
 
         //地点作成
@@ -275,6 +467,34 @@ public class Quest : BaseBehaviour
                 makeList(keyvalue.Value, keyvalue.Key);
         }
 
+        //現在いる位置をデフォルト表示する
+        int x = 0;
+        int y = 0;
+
+        switch (this.currRegion)
+        {
+            case 1:
+                x = 0;
+                y = 1334;
+                break;
+            case 2:
+                x = -619;
+                y = 0;
+                break;
+            case 3:
+                x = -1796;
+                y = 716;
+                break;
+            case 4:
+                x = -2372;
+                y = 0;
+                break;
+        }
+
+        _offsetX = x;
+        _offsetY = y;
+        Map.transform.GetComponent<RectTransform>().anchoredPosition = new Vector3(x, y, 0);
+
         //コピー元非表示
         Point.GetComponent<Image>().enabled = false;
 
@@ -288,10 +508,10 @@ public class Quest : BaseBehaviour
     private void makeList(jsonPlaceList jsl, int Key)
     {
         //地点を作成する
-        Button Point = transform.Find("QuestCanvas/MapPanel/PointPanel/Point").GetComponent<Button>();
+        Button Point = transform.Find("QuestCanvas/MapPanel/Map/PointPanel/Point").GetComponent<Button>();
 
         //地点を作成する親パネル
-        Transform Parent = transform.Find("QuestCanvas/MapPanel/PointPanel");
+        Transform Parent = transform.Find("QuestCanvas/MapPanel/Map/PointPanel");
 
         //生成オブジェクトの位置と回転+親オブジェクトを指定
         float x = jsl.X * scale;
@@ -616,8 +836,11 @@ public class Quest : BaseBehaviour
         //グローバルボタン表示フラグ反映
         if (!QuestInfo.showGlobal)
         {
-            BtnGlobal.interactable = false;
+            //BtnGlobal.interactable = false;
         }
+
+        BtnGlobal.gameObject.SetActive(false);
+        flick_lock = true;
 
         //チュートリアル中の場合
         if (Header.Instance.GetSummary().tutorial_step == constants.User_Info_Tutorial.TUTORIAL_MAINMENU)
@@ -634,6 +857,14 @@ public class Quest : BaseBehaviour
             naviController.onStart(summary, null, TutorialNaviSpeakEnd);
         }
 
+    }
+
+    /// <summary>
+    /// パネルを閉じる（flick_lockを解除）
+    /// </summary>
+    public void closePanel()
+    {
+        flick_lock = false;
     }
 
     /// <summary>
@@ -818,6 +1049,8 @@ public class Quest : BaseBehaviour
             //リストを非表示
             ListPanel.SetActive(false);
 
+            flick_lock = false;
+
             //spクエは非表示
             SpecialTitlePanel.SetActive(false);
             SpBannar.SetActive(false);
@@ -860,7 +1093,7 @@ public class Quest : BaseBehaviour
         Arrow3.SetActive(true);
 
         //地点を作成する親パネル
-        Transform Parent = transform.Find("QuestCanvas/MapPanel/PointPanel");
+        Transform Parent = transform.Find("QuestCanvas/MapPanel/Map/PointPanel");
         Transform point = Parent.Find("Point0");
 
         Vector3 pos = point.GetComponent<RectTransform>().anchoredPosition;
@@ -912,14 +1145,14 @@ public class Quest : BaseBehaviour
         //グローバルボタン表示切替
         if (this.currRegion == constants.Quest_Master.WILD_PLACE)
         {
-            BtnGlobal.gameObject.SetActive(false);
+            //BtnGlobal.gameObject.SetActive(false);
         }
         else
         {
-            BtnGlobal.gameObject.SetActive(true);
+            //BtnGlobal.gameObject.SetActive(true);
         }
 
-        Transform Parent = transform.Find("QuestCanvas/MapPanel/PointPanel");
+        Transform Parent = transform.Find("QuestCanvas/MapPanel/Map/PointPanel");
         foreach (Transform n in Parent.transform)
         {
             //コピー元だけ残して全部削除
@@ -937,6 +1170,41 @@ public class Quest : BaseBehaviour
             QuestInfo = jsonToClass(json);
 
             Reload();
+        }));
+    }
+    //---------------------------------------------------------------------------------------------------------
+    /**
+     * クエスト実行確認ポップアップを立ち上げる
+     */
+    void showGiveup(jsonQuestList entry)
+    {
+        string text = Utility.getText("TEXT_HOME_QUEST_CONFIRM_GIVEUP").Replace("{0}", entry.quest_name);
+
+        Main.Instance.showConfirm(text, (() =>
+        {
+            //二度押しは効かない
+            if (SceneController.Instance.SceneName == "FieldEnd")
+                return;
+
+            AudioManager.Instance.PlaySE("se_btn");
+
+            //ギブアップをする
+            APIConnectManager.Instance.FieldReopen("1", ((string json) =>
+            {
+                //API結果受け取り
+                jsonFieldReopen results = JsonUtility.FromJson<jsonFieldReopen>(json);
+                if (results.result == "ok")
+                {
+                    SceneController.Instance.Jump("FieldEnd", (() =>
+                    {
+                        FieldEndBehaviour _fieldend = FindObjectOfType<FieldEndBehaviour>() as FieldEndBehaviour;
+                        _fieldend.Param = new FieldEndBehaviour.Parameter
+                        {
+                            sphereId = homeSummary.chara.sally_sphere,
+                        };
+                    }));
+                }
+            }));
         }));
     }
 

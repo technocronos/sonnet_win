@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using CreateWave;
+using MyScene;
 using TMPro;
 
 public class FieldEndBehaviour : BaseBehaviour
@@ -191,7 +191,16 @@ public class FieldEndBehaviour : BaseBehaviour
     {
         AudioManager.Instance.PlaySE("se_btn");
 
-        SceneController.Instance.Jump("Home");
+        //SceneController.Instance.Jump("Home");
+
+        SceneController.Instance.Jump("Quest", (() =>
+        {
+            Quest _q = FindObjectOfType<Quest>() as Quest;
+            _q.Param = new Quest.Parameter
+            {
+                panel = "QuestList"
+            };
+        }));
     }
 
 }

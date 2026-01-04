@@ -1,4 +1,4 @@
-﻿using CreateWave;
+﻿using MyScene;
 using Scenes.Common.Scripts;
 using System;
 using System.Collections;

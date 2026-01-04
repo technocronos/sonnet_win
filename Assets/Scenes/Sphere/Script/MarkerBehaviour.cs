@@ -43,10 +43,33 @@ public class MarkerBehaviour : MonoBehaviour
 
         _image.sprite = _sprites[_count];
 
-        if (color != "move")
+        _image.DOFade(0.2f, 1.2f).From(0.7f).SetEase(Ease.InCubic).SetLoops(-1, LoopType.Yoyo);
+
+        /*
+                if (color != "move")
+                    _image.DOFade(0.3f, 1f).SetEase(Ease.InCubic).SetLoops(-1, LoopType.Yoyo);
+                else
+                    StartCoroutine("anim");
+        */
+    }
+
+    // マーカーのタイプを設定（color == "move" の場合のみ）
+    public void SetMarkerType(string markerType)
+    {
+        if (color != "move") return;
+
+        string imagename = "rangemarker_b_" + markerType;
+
+        Sprite[] newSprites = Resources.LoadAll<Sprite>("Image/" + imagename);
+        if (newSprites != null && newSprites.Length > 0)
+        {
+            _sprites = newSprites;
+            _frame = _sprites.Length;
+            _count = 0;
+            _image.sprite = _sprites[_count];
+
             _image.DOFade(0.3f, 1f).SetEase(Ease.InCubic).SetLoops(-1, LoopType.Yoyo);
-        else
-            StartCoroutine("anim");
+        }
     }
 
     IEnumerator anim()

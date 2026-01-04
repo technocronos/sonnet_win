@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using CreateWave;
+using MyScene;
 using Newtonsoft.Json;
 using TMPro;
 using UnityEngine;
