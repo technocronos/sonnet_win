@@ -12,8 +12,8 @@ public class RangeMarker
     StageBehaviour Stage;
 
     public Dictionary<string, int> marks { get; set; } = new Dictionary<string, int>();
-    public Dictionary<int, int> x_arr { get; set; } = new Dictionary<int, int>();
-    public Dictionary<int, int> y_arr { get; set; } = new Dictionary<int, int>();
+    public Dictionary<int, float> x_arr { get; set; } = new Dictionary<int, float>();
+    public Dictionary<int, float> y_arr { get; set; } = new Dictionary<int, float>();
     public Dictionary<int, int> mPow_arr { get; set; } = new Dictionary<int, int>();
     Dictionary<string, MarkerBehaviour> markObj { get; set; } = new Dictionary<string, MarkerBehaviour>();
 
@@ -71,8 +71,8 @@ public class RangeMarker
     public void mark()
     {
         // このcallで必要なローカル変数もどきを設定。
-        int x = x_arr[stack];
-        int y = y_arr[stack];
+        float x = x_arr[stack];
+        float y = y_arr[stack];
         int mPow = mPow_arr[stack];
 
         // 指定されているマスの位置にマークを作成する。
@@ -83,32 +83,32 @@ public class RangeMarker
         // 左のマスに対して再帰チェック。
         if (x > 0)
         {
-            int argX = x - 1;
-            int argY = y;
+            float argX = x - 1;
+            float argY = y;
             this.recMarker(argX, argY, mPow);
         }
 
         // 上
         if (y > 0)
         {
-            int argX = x;
-            int argY = y - 1;
+            float argX = x;
+            float argY = y - 1;
             this.recMarker(argX, argY, mPow);
         }
 
         // 右
         if (x < Sphere.sphere.structWid - 1)
         {
-            int argX = x + 1;
-            int argY = y;
+            float argX = x + 1;
+            float argY = y;
             this.recMarker(argX, argY, mPow);
         }
 
         // 下
         if (y < Sphere.sphere.structHei - 1)
         {
-            int argX = x;
-            int argY = y + 1;
+            float argX = x;
+            float argY = y + 1;
             this.recMarker(argX, argY, mPow);
         }
 
@@ -283,7 +283,7 @@ public class RangeMarker
         return true;
     }
 
-    public string isExists(int x, int y)
+    public string isExists(float x, float y)
     {
         foreach (KeyValuePair<string, MarkerBehaviour> keyValue in markObj)
         {
@@ -303,7 +303,7 @@ public class RangeMarker
 
     //
     // 変数 x, y で示された場所にマーカーを置く。
-    private void setMarker(int x, int y)
+    private void setMarker(float x, float y)
     {
         // 新たに置くマーカーの名前を取得。
         string markerName = "no" + ++actNo;
@@ -338,7 +338,7 @@ public class RangeMarker
 
     //
     // 変数 x, y で示された場所にマーカーを置く。個別用
-    public void setOneMarker(string markerName, int x, int y, string color)
+    public void setOneMarker(string markerName, float x, float y, string color)
     {
         // マーカを動的に確保する。
         Image _marker = UnityEngine.Object.Instantiate(source, new Vector3(0, 0, 0), Quaternion.identity, Stage.transform);
@@ -358,7 +358,7 @@ public class RangeMarker
     // markラベルのサブルーチン。
     // 変数argX, argYで示されたマスに進入する場合の移動力残余等を計算して、
     // 進入できるなら mark ラベルを再帰コールする。
-    void recMarker(int argX, int argY, int mPow)
+    void recMarker(float argX, float argY, int mPow)
     {
         int cost = 0;
 
@@ -390,7 +390,7 @@ public class RangeMarker
                 if (unitNo > 0)
                 {
                     //それが他勢力の所属なら、そこは他勢力のZOC。
-                    int u = int.Parse(Sphere.sphere.unit[unitNo].Info.Split(new char[] { ' ' })[1]);
+                    int u = Sphere.sphere.unit[unitNo].Info.union;
                     if (union != u)
                         zoc = true;
                 }

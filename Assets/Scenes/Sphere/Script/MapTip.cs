@@ -169,6 +169,24 @@ public class MapTip
         yield break;
     }
 
+    public void setCost()
+    {
+        foreach(KeyValuePair<string, int> costpair in Stage.cost)
+        {
+            var coststr = costpair.Key.Replace("cost", "");
+
+            foreach (KeyValuePair<string, TipBehaviour> tipspair in tips)
+            {
+                var tipsstr = tipspair.Key.Replace("tip", "");
+                if(coststr == tipsstr && costpair.Value == 9999)
+                {
+                    tipspair.Value.setCost();
+                }
+            }
+
+        }
+    }
+
     //
     // 変数 y で示された行のチップを更新する。
     public void line(int y)

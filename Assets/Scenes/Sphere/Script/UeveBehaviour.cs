@@ -31,8 +31,8 @@ public class UeveBehaviour : MonoBehaviour
         jsonUnit unitinfo = Sphere.sphere.unit[no];
 
         // 自身の位置をセット。対象ユニットに合わせる。
-        int x = (unitinfo.X * Sphere.TIP_SIZE) + (Sphere.UNIT_SIZE / 2);
-        int y = ((unitinfo.Y * Sphere.TIP_SIZE)) * -1;
+        float x = (unitinfo.X * Sphere.TIP_SIZE) + (Sphere.UNIT_SIZE / 2);
+        float y = ((unitinfo.Y * Sphere.TIP_SIZE)) * -1;
 
         // アイコンをセット。
         switch (type)
@@ -55,8 +55,8 @@ public class UeveBehaviour : MonoBehaviour
         //前面表示する
         transform.GetComponent<RectTransform>().SetAsLastSibling();
 
-        int _x = x;
-        int _y = y + 40;
+        float _x = x;
+        float _y = y + 40;
 
         // ブレーキをかけながらに飛び出すようにする
         transform.GetComponent<RectTransform>().DOAnchorPos(new Vector3(_x, _y, 0), 1.0f).SetEase(Ease.OutCubic).OnComplete(onEnd);

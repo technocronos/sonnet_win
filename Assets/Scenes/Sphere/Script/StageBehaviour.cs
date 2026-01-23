@@ -26,11 +26,11 @@ public class StageBehaviour : BaseBehaviour
     public float _offsetY { get; set; } = 0;
 
     // カーソルを0-0へ。
-    public int moveX { get; set; } = 0;
-    public int moveY { get; set; } = 0;
+    public float moveX { get; set; } = 0;
+    public float moveY { get; set; } = 0;
 
-    public int cursorX { get; set; } = 0;
-    public int cursorY { get; set; } = 0;
+    public float cursorX { get; set; } = 0;
+    public float cursorY { get; set; } = 0;
 
     public int slideX { get; set; } = 0;
     public int slideY { get; set; } = 0;
@@ -219,6 +219,8 @@ public class StageBehaviour : BaseBehaviour
         //マップチップ作成
         StartCoroutine(objMapTip.refinfo());
 
+        objMapTip.setCost();
+
         // あるべき画面位置をチップ単位で表している変数を初期化。
         offsetX = 0;
         offsetY = 0;
@@ -248,8 +250,8 @@ public class StageBehaviour : BaseBehaviour
 
     int actX;
     int actY;
-    int csrActX;
-    int csrActY;
+    float csrActX;
+    float csrActY;
     int speed;
     public int vib { get; set; } = 0;
 
@@ -323,6 +325,8 @@ public class StageBehaviour : BaseBehaviour
 
     private void Update()
     {
+        return;
+
         if (User == null) return;
         if (User.objPointR == null) return;
 

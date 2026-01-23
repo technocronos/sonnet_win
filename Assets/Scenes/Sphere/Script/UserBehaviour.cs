@@ -15,19 +15,19 @@ public class UserBehaviour : MonoBehaviour
 
     public int commUnit { get; set; }
 
-    private int commOrgX { get; set; }
-    private int commOrgY { get; set; }
+    private float commOrgX { get; set; }
+    private float commOrgY { get; set; }
     private int commOrgA { get; set; }
 
     public int phaseDepth { get; set; }
 
     private string change { get; set; }
 
-    private int useX { get; set; }
-    private int useY { get; set; }
+    private float useX { get; set; }
+    private float useY { get; set; }
 
-    public int pointX { get; set; }
-    public int pointY { get; set; }
+    public float pointX { get; set; }
+    public float pointY { get; set; }
 
     public int itemNo { get; set; }
 
@@ -111,7 +111,7 @@ public class UserBehaviour : MonoBehaviour
         // コマンドユニットの現在の場所を保持しておく。
         commOrgX = unitinfo.X;
         commOrgY = unitinfo.Y;
-        commOrgA = int.Parse(unitinfo.Info.Split(new char[] { ' ' })[3]);
+        commOrgA = unitinfo.Info.align;
 
         // フェーズスタックを初期化。
         phaseDepth = -1;
@@ -224,7 +224,7 @@ public class UserBehaviour : MonoBehaviour
                     // キャンセルで移動先選択になる場合は、コマンドユニットの位置を元に戻す。
                     if (change == "move")
                     {
-                        Stage.objUnits.move(commUnit, commOrgX, commOrgY, commOrgA);
+                        //Stage.objUnits.move(commUnit, commOrgX, commOrgY, commOrgA);
                     }
                 }
             }
@@ -256,7 +256,6 @@ public class UserBehaviour : MonoBehaviour
                     break;
                 // コマンド選択1(移動前)
                 case "comm1":
-
                     // ステージカーソルをコマンドユニットのところにセット。
                     Stage.moveX = commUnitInfo.X;
                     Stage.moveY = commUnitInfo.Y;
@@ -271,21 +270,28 @@ public class UserBehaviour : MonoBehaviour
 
                     this.comm();
 
+                    //マーカー非表示
+                    Stage.objMarker.clearMarker();
+                    // カーソルを非表示に。
+                    Stage._cursor.enabled = false;
+
                     break;
 
                 // 移動先選択
                 case "move":
 
                     // 移動可能なマスにマーカを設定する。
+                    /*
                     Stage.objMarker.stack = 1;
                     Stage.objMarker.x_arr[1] = commUnitInfo.X;
                     Stage.objMarker.y_arr[1] = commUnitInfo.Y;
-                    Stage.objMarker.mPow_arr[1] = int.Parse(commUnitInfo.Info.Split(new char[] { ' ' })[2]);
+                    Stage.objMarker.mPow_arr[1] = commUnitInfo.Info.cost;
                     Stage.objMarker.mType = 1;
-                    Stage.objMarker.union = int.Parse(commUnitInfo.Info.Split(new char[] { ' ' })[1]);
+                    Stage.objMarker.union = commUnitInfo.Info.union;
                     Stage.objMarker.color = "move";
 
                     Stage.objMarker.mark();
+                    */
 
                     // ポイント選択受付を初期化。
                     this.point();
@@ -321,6 +327,7 @@ public class UserBehaviour : MonoBehaviour
                 case "item":
                     objMC.btnChange(2);
                     objMC.btnBackVisible(false);
+                    objMC.btnExitVisible(false);
 
                     objCommBtn.mode = 2;
                     objCommBtn.reset();
@@ -609,11 +616,11 @@ public class UserBehaviour : MonoBehaviour
                     {
                         //コマンドユニットunion取得
                         jsonUnit commUnitInfo = Sphere.sphere.unit[commUnit];
-                        string unionComm = commUnitInfo.Info.Split(new char[] { ' ' })[1];
+                        int unionComm = commUnitInfo.Info.union;
 
                         //対象ユニットunion取得
                         jsonUnit focusUnitInfo = Sphere.sphere.unit[focusUnit];
-                        string unionTrgt = focusUnitInfo.Info.Split(new char[] { ' ' })[1];
+                        int unionTrgt = focusUnitInfo.Info.union;
 
                         if (unionComm == unionTrgt)
                             targetOk = false;

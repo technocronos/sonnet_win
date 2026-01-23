@@ -87,7 +87,7 @@ public class MarkerBehaviour : MonoBehaviour
         }
     }
 
-    public void setPos(int posX, int posY)
+    public void setPos(float posX, float posY)
     {
         // チップを該当の位置へ移動。
         transform.localPosition = new Vector3(posX, posY * -1, 0);

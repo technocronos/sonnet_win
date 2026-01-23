@@ -191,6 +191,7 @@ public class ItemListBehaviour : MonoBehaviour
         User.Cancel();
         User.Cancel();
         User.BtnItem.interactable = true;
+        User.objMC.btnExitVisible(true);
     }
 
     /// <summary>

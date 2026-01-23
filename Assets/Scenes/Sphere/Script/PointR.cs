@@ -26,8 +26,8 @@ class PointR
     public string invalid { get; set; }
     public string _invalid { get; set; }
 
-    public int move_x { get; set; }
-    public int move_y { get; set; }
+    public float move_x { get; set; }
+    public float move_y { get; set; }
 
 
     public int focusUnit { get; set; }
@@ -294,10 +294,10 @@ class PointR
                             if (focusUnit > 0)
                             {
                                 jsonUnit u = Sphere.sphere.unit[focusUnit];
-                                int unionTar = int.Parse(u.Info.Split(new char[] { ' ' })[1]);
+                                int unionTar = u.Info.align;
 
                                 jsonUnit cu = Sphere.sphere.unit[User.commUnit];
-                                int unionMe = int.Parse(cu.Info.Split(new char[] { ' ' })[1]);
+                                int unionMe = cu.Info.align;
 
                                 if (unionMe == unionTar)
                                     same_union = true;
@@ -370,7 +370,7 @@ class PointR
         }
     }
 
-    void setMarker(string markerName, int x, int y, string color)
+    void setMarker(string markerName, float x, float y, string color)
     {
         // 攻撃対象ユニットを取得。
         //マーカークリア
@@ -382,7 +382,7 @@ class PointR
             jsonUnit UnitInfo = Sphere.sphere.unit[focusUnit];
 
             Stage.objMarker.mType = 1;
-            Stage.objMarker.union = int.Parse(UnitInfo.Info.Split(new char[] { ' ' })[1]);
+            Stage.objMarker.union = UnitInfo.Info.union;
             Stage.objMarker.color = "target";
 
             //敵の場合

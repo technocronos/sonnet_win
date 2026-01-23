@@ -1,6 +1,7 @@
 ﻿using DG.Tweening;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor.Localization.Plugins.XLIFF.V12;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -59,18 +60,11 @@ public class Units
 
             units[_unit.name] = _unit;
 
-            // グラフィック番号をセット。
-            int graphNo = int.Parse(unitinfo.Info.Split(new char[] { ' ' })[0]);
-            units[_unit.name].graphNo = graphNo;
-
             //初期化
-            units[_unit.name].Init();
+            units[_unit.name].Init(unitinfo);
 
             // グラフィック向きをセット。
-            int graphAlign = int.Parse(unitinfo.Info.Split(new char[] { ' ' })[3]);
-
-            //画像を反映する
-            units[_unit.name].setAlign(graphAlign);
+            units[_unit.name].setAlign(unitinfo.Info.align);
 
             // 表示座標を反映。
             units["unit_" + no.ToString()].setPos();
@@ -83,7 +77,7 @@ public class Units
         }
     }
 
-    public void move(int no, int x, int y, int align)
+    public void move(int no, float x, float y, int align)
     {
         jsonUnit unitinfo = Sphere.sphere.unit[no];
 

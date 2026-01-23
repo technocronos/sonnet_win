@@ -12,6 +12,7 @@ public class TipBehaviour : MonoBehaviour
 
     //x_y の番号
     private string tipName { get; set; }
+
     private SphereBehaviour Sphere { get; set; }
     private StageBehaviour Stage { get; set; }
     private Sprite[] _sprites { get; set; }
@@ -27,6 +28,9 @@ public class TipBehaviour : MonoBehaviour
         tipName = _tipName;
         Sphere = _Sphere;
         Stage = _Stage;
+
+        transform.GetComponent<Rigidbody2D>().simulated = false;
+        transform.GetComponent<Collider2D>().enabled = false;
 
     }
 
@@ -107,6 +111,12 @@ public class TipBehaviour : MonoBehaviour
         {
             transform.GetComponent<Canvas>().sortingOrder = 7;
         }
+    }
+
+    public void setCost()
+    {
+        transform.GetComponent<Rigidbody2D>().simulated = true;
+        transform.GetComponent<Collider2D>().enabled = true;
     }
 
     public void destroy()

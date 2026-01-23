@@ -25,6 +25,8 @@ public class SphereBehaviour : BaseBehaviour
     public TextMeshProUGUI StoryText;
     public GameObject StagePanel;
     public GameObject ApDispPanel;
+    public HpBehaviour HPGaugePanel;
+    public ExpDispBehaviour ExpDispPanel;
     public GameObject InfoW;
     public BteffXBehaviour bteffX;
 
@@ -232,7 +234,7 @@ public class SphereBehaviour : BaseBehaviour
         */
 
 
-        ApDispPanel.GetComponent<apDispBehaviour>().init();
+        //ApDispPanel.GetComponent<apDispBehaviour>().init();
 
         if (sphere.raid_dungeon.status == constants.Raid_Dungeon.START)
         {
@@ -275,8 +277,6 @@ public class SphereBehaviour : BaseBehaviour
             int i;
             for (i = 0; i < sphere.preLd.Length; i++)
                 mitter.lead["lead" + (i + 1)] = sphere.preLd[i];
-
-            mitter.leadNum = i;
 
             // 指揮再生を行う。
             this.Lead();
@@ -457,7 +457,73 @@ public class SphereBehaviour : BaseBehaviour
 
     public Leader leader = new Leader();
 
-    //
+    public void LeadCall(List<string> command)
+    {
+        int i = 1;
+        foreach(string com in command)
+        {
+            mitter.lead["lead" + i] = com;
+            i++;
+        }
+
+        leader.flow.Clear();
+
+        this.Lead();
+    }
+
+    private string COMMAND_UEXIT(int unitNo)
+    {
+        return "UEXIT " + unitNo + " collap";
+    }
+    private string COMMAND_TRANS_FIELDEND()
+    {
+        return "TRANS scene=FieldEnd&sphereId=" + Param.sphereId;
+    }
+
+    private string COMMAND_TRANS_QUEST()
+    {
+        return "TRANS scene=Quest";
+    }
+
+    private string COMMAND_TRANS_REOPEN()
+    {
+        return "TRANS scene=Sphere&id=" + Param.sphereId + "&reopen=true";
+    }
+
+    private string COMMAND_DELAY(int millsec)
+    {
+        return "DELAY " + millsec;
+    }
+
+    private string COMMAND_DAMAG(int no, int damage)
+    {
+        return "DAMAG " + no + " " + damage;
+    }
+
+    public void Damage(int no, int damage)
+    {
+        List<string> command = new List<string>();
+
+        command.Add(COMMAND_DAMAG(no, damage));
+
+        LeadCall(command);
+    }
+
+    public void GameOver(int no, int damage)
+    {
+        Stage.objUnits.units["unit_" + no].commandkeyrecv = false;
+        Stage.act_start = true;
+
+        List<string> command = new List<string>();
+
+        command.Add(COMMAND_DAMAG(no, damage));
+        command.Add(COMMAND_UEXIT(no));
+        //command.Add(COMMAND_TRANS_FIELDEND());
+        command.Add(COMMAND_TRANS_REOPEN());
+
+        LeadCall(command);
+    }
+
     // 受信した指揮の再生を開始する。
     void Lead()
     {
@@ -474,7 +540,7 @@ public class SphereBehaviour : BaseBehaviour
         User.tap_flg = false;
 
         // 送信機のレスポンスにある指揮内容を一つずつ見て、内部コマンド(フロー)に分解していく。
-        for (int i = 1; i <= mitter.leadNum; i++)
+        for (int i = 1; i <= mitter.lead.Count; i++)
         {
             // 指揮取得。
             string lead = mitter.lead["lead" + i];
@@ -600,7 +666,6 @@ public class SphereBehaviour : BaseBehaviour
                     if (!sphere.unit.ContainsKey(u_no))
                     {
                         sphere.unit[u_no] = new jsonUnit();
-                        sphere.unit[u_no].Status = lead.Substring(10);
                     }
 
                     leader.flow.Add(lead);
@@ -613,13 +678,13 @@ public class SphereBehaviour : BaseBehaviour
                     // USTATに変換する。
                     leader.unitNo = lead.Split(new char[] { ' ' })[1];
                     string name = lead.Split(new char[] { ' ' })[2];
-                    string val = lead.Split(new char[] { ' ' })[3];
-                    string cur = sphere.unit[int.Parse(leader.unitNo)].Status;
+                    int val = int.Parse(lead.Split(new char[] { ' ' })[3]) ;
+                    UnitStatus cur = sphere.unit[int.Parse(leader.unitNo)].Status;
 
                     switch (name)
                     {
                         case "hp":
-                            leader.flow.Add("USTAT " + leader.unitNo + " " + cur.Substring(0, 5) + val + " " + cur.Substring(11));
+                            leader.flow.Add("USTAT " + leader.unitNo + " " + (cur.hp + val) + " " + cur.maxhp + " " + cur.att1 + " " + cur.att2 + " " + cur.att3 + " " + cur.def1 + " " + cur.def2 + " " + cur.def3 + " " + cur.spd + " " + cur.defX);
                             break;
                     }
 
@@ -766,7 +831,7 @@ public class SphereBehaviour : BaseBehaviour
                     this.reopen();
                 }
 
-                ApDispPanel.gameObject.SetActive(true);
+                //ApDispPanel.gameObject.SetActive(true);
 
                 // このムービーはstopする。
                 yield break;
@@ -915,7 +980,7 @@ public class SphereBehaviour : BaseBehaviour
             case "ACTPT":
                 //ACTPT 60
                 actPt = int.Parse(command.Split(new char[] { ' ' })[1]);
-                ApDispPanel.GetComponent<apDispBehaviour>().refInfo();
+                //ApDispPanel.GetComponent<apDispBehaviour>().refInfo();
                 break;
 
             // ユニットステータスの更新
@@ -923,8 +988,18 @@ public class SphereBehaviour : BaseBehaviour
                 //USTAT 008 0007 00092 00092 0051 0054 0051 0049 0049 0049 0047 0020
 
                 int u_no = int.Parse(command.Split(new char[] { ' ' })[1]);
+                sphere.unit[u_no].Status.level = int.Parse(command.Split(new char[] { ' ' })[2]);
+                sphere.unit[u_no].Status.hp = int.Parse(command.Split(new char[] { ' ' })[3]);
+                sphere.unit[u_no].Status.maxhp = int.Parse(command.Split(new char[] { ' ' })[4]);
+                sphere.unit[u_no].Status.att1 = int.Parse(command.Split(new char[] { ' ' })[5]);
+                sphere.unit[u_no].Status.att2 = int.Parse(command.Split(new char[] { ' ' })[6]);
+                sphere.unit[u_no].Status.att3 = int.Parse(command.Split(new char[] { ' ' })[7]);
+                sphere.unit[u_no].Status.def1 = int.Parse(command.Split(new char[] { ' ' })[8]);
+                sphere.unit[u_no].Status.def2 = int.Parse(command.Split(new char[] { ' ' })[9]);
+                sphere.unit[u_no].Status.def3 = int.Parse(command.Split(new char[] { ' ' })[10]);
+                sphere.unit[u_no].Status.spd = int.Parse(command.Split(new char[] { ' ' })[11]);
+                sphere.unit[u_no].Status.defX = int.Parse(command.Split(new char[] { ' ' })[12]);
 
-                sphere.unit[u_no].Status = command.Substring(10);
                 break;
 
             // ユニットアイテム情報の更新
@@ -939,7 +1014,10 @@ public class SphereBehaviour : BaseBehaviour
                     sphere.unit[unitNo] = u;
                 }
 
-                sphere.unit[unitNo].Item = command.Substring(10);
+                foreach (string item_id in command.Substring(10).Split(new char[] { ' ' }))
+                {
+                    sphere.unit[unitNo].Item.Add(int.Parse(item_id));
+                }
                 break;
 
             // ユニット装備の更新
@@ -954,7 +1032,10 @@ public class SphereBehaviour : BaseBehaviour
                     sphere.unit[unitNo] = u;
                 }
 
-                sphere.unit[unitNo].Eqp = command.Substring(10);
+                foreach(string eqp_id in command.Substring(10).Split(new char[] { ' ' }))
+                {
+                    sphere.unit[unitNo].Eqp.Add(int.Parse(eqp_id) );
+                }
                 break;
 
             // ユニットの追加
@@ -973,7 +1054,10 @@ public class SphereBehaviour : BaseBehaviour
                 // ユニット定義を追加。
                 sphere.unit[unitNo].X = int.Parse(command.Split(new char[] { ' ' })[2]);
                 sphere.unit[unitNo].Y = int.Parse(command.Split(new char[] { ' ' })[3]);
-                sphere.unit[unitNo].Info = command.Substring(16, 12);
+                sphere.unit[unitNo].Info.graphNo = int.Parse(command.Split(new char[] { ' ' })[4]);
+                sphere.unit[unitNo].Info.union = int.Parse(command.Split(new char[] { ' ' })[5]);
+                sphere.unit[unitNo].Info.cost = int.Parse(command.Split(new char[] { ' ' })[6]);
+                sphere.unit[unitNo].Info.align = int.Parse(command.Split(new char[] { ' ' })[7]);
                 sphere.unit[unitNo].Name = command.Split(new char[] { ' ' })[8];
 
                 // ユニット総数を設定しなおす。
@@ -1188,11 +1272,12 @@ public class SphereBehaviour : BaseBehaviour
 
             // 行動ptゲージの表示/非表示
             case "APDSW":
+                /*
                 if (command.Split(new char[] { ' ' })[1] == "1")
                     ApDispPanel.gameObject.SetActive(true);
                 else
                     ApDispPanel.gameObject.SetActive(false);
-
+                */
                 break;
             // アイテムボタンの矢印表示
             case "ARROW":
@@ -1374,8 +1459,45 @@ public class SphereBehaviour : BaseBehaviour
                 {
                     Debug.Log(keyvalue2.Value);
 
-                    jsonUnit jsonunitlist;
-                    jsonunitlist = JsonUtility.FromJson<jsonUnit>(keyvalue2.Value.ToString());
+                    jsonUnit jsonunitlist = new jsonUnit();
+                    jsonUnitLocal jsonunitlistlocal = JsonUtility.FromJson<jsonUnitLocal>(keyvalue2.Value.ToString());
+
+                    jsonunitlist.Name = jsonunitlistlocal.Name;
+                    jsonunitlist.X = jsonunitlistlocal.X;
+                    jsonunitlist.Y = jsonunitlistlocal.Y;
+                    jsonunitlist.Info.graphNo = int.Parse(jsonunitlistlocal.Info.Split(new char[] { ' ' })[0]);
+                    jsonunitlist.Info.union = int.Parse(jsonunitlistlocal.Info.Split(new char[] { ' ' })[1]);
+                    jsonunitlist.Info.cost = int.Parse(jsonunitlistlocal.Info.Split(new char[] { ' ' })[2]);
+                    jsonunitlist.Info.align = int.Parse(jsonunitlistlocal.Info.Split(new char[] { ' ' })[3]);
+
+                    jsonunitlist.Status.level = int.Parse(jsonunitlistlocal.Status.Split(new char[] { ' ' })[0]);
+                    jsonunitlist.Status.hp = int.Parse(jsonunitlistlocal.Status.Split(new char[] { ' ' })[1]);
+                    jsonunitlist.Status.maxhp = int.Parse(jsonunitlistlocal.Status.Split(new char[] { ' ' })[2]);
+                    jsonunitlist.Status.att1 = int.Parse(jsonunitlistlocal.Status.Split(new char[] { ' ' })[3]);
+                    jsonunitlist.Status.att2 = int.Parse(jsonunitlistlocal.Status.Split(new char[] { ' ' })[4]);
+                    jsonunitlist.Status.att3 = int.Parse(jsonunitlistlocal.Status.Split(new char[] { ' ' })[5]);
+                    jsonunitlist.Status.def1 = int.Parse(jsonunitlistlocal.Status.Split(new char[] { ' ' })[6]);
+                    jsonunitlist.Status.def2 = int.Parse(jsonunitlistlocal.Status.Split(new char[] { ' ' })[7]);
+                    jsonunitlist.Status.def3 = int.Parse(jsonunitlistlocal.Status.Split(new char[] { ' ' })[8]);
+                    jsonunitlist.Status.spd = int.Parse(jsonunitlistlocal.Status.Split(new char[] { ' ' })[9]);
+                    jsonunitlist.Status.defX = int.Parse(jsonunitlistlocal.Status.Split(new char[] { ' ' })[10]);
+
+                    foreach (string item_id in jsonunitlistlocal.Item.Split(new char[] { ' ' }))
+                    {
+                        if(int.TryParse(item_id, out var id)) { 
+                            if(id > 0)
+                                jsonunitlist.Item.Add(id);
+                        }
+                    }
+
+                    foreach (string eqp_id in jsonunitlistlocal.Eqp.Split(new char[] { ' ' }))
+                    {
+                        if (int.TryParse(eqp_id, out var id))
+                        {
+                            if (id > 0)
+                                jsonunitlist.Eqp.Add(id);
+                        }
+                    }
 
                     units.Add(int.Parse(keyvalue2.Key), jsonunitlist);
                 }
@@ -1422,6 +1544,16 @@ public class SphereBehaviour : BaseBehaviour
         }
     }
 
+    public class jsonUnitLocal
+    {
+        public string Name;
+        public float X;
+        public float Y;
+        public string Info;
+        public string Status;
+        public string Item;
+        public string Eqp;
+    }
 
     //----------------------------------------------------------------------
     // ユーザ入力を処理するフェーズを表す。
@@ -1526,7 +1658,7 @@ public class SphereBehaviour : BaseBehaviour
     // 戻り値)
     //     unitNo   指定された場所に存在するユニット番号
     //              見つからなかった場合は 0。
-    public int FindUnit(int x, int y)
+    public int FindUnit(float x, float y)
     {
         int unitNo = 0;
 

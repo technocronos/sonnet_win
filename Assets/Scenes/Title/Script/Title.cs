@@ -96,6 +96,7 @@ public class Title : BaseBehaviour
         //登録済み
         else if (LoginInfo.regist == 1)
         {
+            //next_scene = "SphereMoc";
             next_scene = "Quest";
         }
         // エラー等で、ユーザレコードは出来てるのに、キャラクターレコードが出来てない場合。
@@ -178,6 +179,16 @@ public class Title : BaseBehaviour
         if (next_scene != null)
         {
             AudioManager.Instance.PlaySE("se_btn");
+
+            /*
+            SceneController.Instance.Jump(next_scene, (() =>
+            {
+                SphereMoc spheremoc = FindObjectOfType<SphereMoc>() as SphereMoc;
+                spheremoc.Param = new SphereMoc.Parameter { sphereId = 1111 };
+            }));
+
+            return;
+            */
 
             if (this.TutorialStep == constants.User_Info_Tutorial.TUTORIAL_BATTLE)
             {

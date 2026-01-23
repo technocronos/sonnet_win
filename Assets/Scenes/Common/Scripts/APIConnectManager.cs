@@ -1881,13 +1881,38 @@ public class jsonEquipSet
 public class jsonUnit
 {
     public string Name;
-    public int X;
-    public int Y;
-    public string Info;
-    public string Status;
-    public string Item;
-    public string Eqp;
+    public float X;
+    public float Y;
+    public UnitInfo Info = new UnitInfo();
+    public UnitStatus Status = new UnitStatus();
+    public List<int> Item = new List<int>();
+    public List<int> Eqp = new List<int>();
 }
+
+[Serializable]
+public class UnitInfo
+{
+    public int graphNo;
+    public int union;
+    public int cost;
+    public int align;
+}
+[Serializable]
+public class UnitStatus
+{
+    public int level;
+    public int hp;
+    public int maxhp;
+    public int att1;
+    public int att2;
+    public int att3;
+    public int def1;
+    public int def2;
+    public int def3;
+    public int spd;
+    public int defX;
+}
+
 
 [Serializable]
 public class jsonSphere

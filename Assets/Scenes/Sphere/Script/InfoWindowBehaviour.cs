@@ -75,12 +75,7 @@ class InfoWindowBehaviour : MonoBehaviour
             User.setInfoWindowVisible(true);
 
             // 有効なユニットが指定されているならステータス表示。
-            User.setStatusWindowVisible(true);
-
-            // 指定されたユニットが所持しているアイテム数から、
-            // アイテムページ数を計算しておく。
-            int itemPages = (int)(Mathf.Ceil(commUnitInfo.Item.Length / 32));
-            if (itemPages < 1) itemPages = 1;
+            //User.setStatusWindowVisible(true);
 
             Stage.lef = 2; Stage.top = 2; Stage.rig = 2; Stage.bot = 4;
             Stage.center();
@@ -169,32 +164,27 @@ class InfoWindowBehaviour : MonoBehaviour
 
         Transform gauge = User.transform.Find("InfoW/HPGauge/hp_gauge_bar/gauge");
 
-        // 指定されたユニットのステータスを取得。
-        string[] sta = unitinfo.Status.Split(new char[] { ' ' });
-
-
-
         // 各種情報を表示。
         name.text = unitinfo.Name;
-        level.text = "Lv" + int.Parse(sta[0]);
+        level.text = "Lv" + unitinfo.Status.level;
 
-        hp.text = int.Parse(sta[1]).ToString();
-        max.text = int.Parse(sta[2]).ToString();
-        att1.text = int.Parse(sta[3]).ToString();
-        att2.text = int.Parse(sta[4]).ToString();
-        att3.text = int.Parse(sta[5]).ToString();
-        def1.text = int.Parse(sta[6]).ToString();
-        def2.text = int.Parse(sta[7]).ToString();
-        def3.text = int.Parse(sta[8]).ToString();
-        spd.text = int.Parse(sta[9]).ToString();
+        hp.text = unitinfo.Status.hp.ToString();
+        max.text = unitinfo.Status.maxhp.ToString();
+        att1.text = unitinfo.Status.att1.ToString();
+        att2.text = unitinfo.Status.att2.ToString();
+        att3.text = unitinfo.Status.att3.ToString();
+        def1.text = unitinfo.Status.def1.ToString();
+        def2.text = unitinfo.Status.def2.ToString();
+        def3.text = unitinfo.Status.def3.ToString();
+        spd.text = unitinfo.Status.spd.ToString();
 
         // 特殊防御の表示非表示を制御
-        defX.text = int.Parse(sta[10]).ToString();
+        defX.text = unitinfo.Status.defX.ToString();
         defX.enabled = (defX.text != "");
 
         // HPゲージを更新。
-        int _hp = int.Parse(sta[1]);
-        int _hp_max = int.Parse(sta[2]);
+        int _hp = unitinfo.Status.hp;
+        int _hp_max = unitinfo.Status.maxhp;
         float hp_val = Mathf.Min(_hp, _hp_max);
 
         int posx = (int)(((hp_val * 1.0f) / _hp_max) * 292);
