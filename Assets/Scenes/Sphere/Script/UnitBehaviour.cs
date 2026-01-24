@@ -8,9 +8,16 @@ using UnityEngine;
 public class UnitBehaviour : MonoBehaviour
 {
 
-    public Animator Anim;
-    public HpBehaviour HP;
-    public ExpDispBehaviour EXP;
+    [SerializeField]
+    private Animator Anim;
+    [SerializeField]
+    private HpBehaviour HP;
+    [SerializeField]
+    private ExpDispBehaviour EXP;
+    [SerializeField]
+    private GameObject weapon_slash;
+    [SerializeField]
+    private Animator SlashAnim;
 
     SphereBehaviour Sphere { get; set; }
     StageBehaviour Stage { get; set; }
@@ -20,6 +27,9 @@ public class UnitBehaviour : MonoBehaviour
     /// マスが75だがunitは72なのでマージンを入れる 
     /// </summary>
     private float margin { get; set; }
+    private const float cooldown = 2f;
+    private bool attack_flg = false;
+
 
     private Dictionary<string, Sprite> _sprites { get; set; } = new Dictionary<string, Sprite>();
     private int _count { get; set; } = 0;
@@ -57,6 +67,7 @@ public class UnitBehaviour : MonoBehaviour
 
         unitinfo = _unitinfo;
         no = int.Parse(transform.name.Split('_')[1]);
+        unitinfo.no = no;
 
         margin = (Sphere.TIP_SIZE - Sphere.UNIT_SIZE) / 2;
 
@@ -71,10 +82,21 @@ public class UnitBehaviour : MonoBehaviour
             }
         }
 
+        weapon_slash.SetActive(false);
+
         if (no == PLAYER_ID)
         {
             HP.show(no);
             EXP.show(0, Header.Instance.GetSummary().exp.relative_exp, Header.Instance.GetSummary().exp.relative_next, unitinfo.Status.level);
+            unitinfo.code = "avatar";
+            unitinfo.act_brain = "manual";
+
+            StartCoroutine(SlashAttack());
+        }
+        else
+        {
+            unitinfo.code = "enemy" + no;
+            unitinfo.act_brain = "generic";
         }
 
         // Coroutineをとりあえず動かしておく。
@@ -87,87 +109,118 @@ public class UnitBehaviour : MonoBehaviour
         {
             try
             {
-                if (no != PLAYER_ID) return;
-
-                Vector3 _stage = Stage.GetComponent<RectTransform>().anchoredPosition;
-                int cost = 0;
-
-                if (Input.GetKey(KeyCode.UpArrow))
+                if(unitinfo.act_brain == "manual")
                 {
-                    Stage.act_start =  false;
-                    cost = Mathf.Max(Stage.cost["cost" + Mathf.Floor(unitinfo.X) + "_" + (Mathf.Ceil(unitinfo.Y) - 1)], Stage.cost["cost" + Mathf.Ceil(unitinfo.X) + "_" + (Mathf.Ceil(unitinfo.Y) - 1)]);
-                    this.setAlign(3);
+                    Vector3 _stage = Stage.GetComponent<RectTransform>().anchoredPosition;
+                    int cost = 0;
 
-                    if (cost != 9999)
+                    if (Input.GetKey(KeyCode.UpArrow))
                     {
-                        unitinfo.Y -= moverate;
+                        Stage.act_start = false;
+                        attack_flg = true;
+                        cost = Mathf.Max(Stage.cost["cost" + Mathf.Floor(unitinfo.X) + "_" + (Mathf.Ceil(unitinfo.Y) - 1)], Stage.cost["cost" + Mathf.Ceil(unitinfo.X) + "_" + (Mathf.Ceil(unitinfo.Y) - 1)]);
+                        this.setAlign(3);
 
-                        if ((unitinfo.Y * Sphere.TIP_SIZE) <= _stage.y + (Sphere.TIP_SIZE))
+                        if (cost != 9999)
                         {
-                            Vector3 vector = new Vector3(_stage.x, _stage.y - (Sphere.TIP_SIZE * moverate), _stage.z);
-                            Stage.GetComponent<RectTransform>().DOAnchorPos(vector, movetime).SetEase(Ease.Linear);
-                        }
+                            unitinfo.Y -= moverate;
 
-                        this.setPos(true);
+                            if ((unitinfo.Y * Sphere.TIP_SIZE) <= _stage.y + (Sphere.TIP_SIZE))
+                            {
+                                Vector3 vector = new Vector3(_stage.x, _stage.y - (Sphere.TIP_SIZE * moverate), _stage.z);
+                                Stage.GetComponent<RectTransform>().DOAnchorPos(vector, movetime).SetEase(Ease.Linear);
+                            }
+
+                            this.setPos(true);
+                        }
+                    }
+                    else if (Input.GetKey(KeyCode.DownArrow))
+                    {
+                        Stage.act_start = false;
+                        attack_flg = true;
+                        cost = Mathf.Max(Stage.cost["cost" + Mathf.Floor(unitinfo.X) + "_" + (Mathf.Floor(unitinfo.Y) + 1)], Stage.cost["cost" + Mathf.Ceil(unitinfo.X) + "_" + (Mathf.Floor(unitinfo.Y) + 1)]);
+                        this.setAlign(0);
+
+                        if (cost != 9999)
+                        {
+                            unitinfo.Y += moverate;
+                            if ((unitinfo.Y * Sphere.TIP_SIZE) >= _stage.y + Stage.GetComponent<RectTransform>().rect.height - (Sphere.TIP_SIZE * 2))
+                            {
+                                Vector3 vector = new Vector3(_stage.x, _stage.y + (Sphere.TIP_SIZE * moverate), _stage.z);
+                                Stage.GetComponent<RectTransform>().DOAnchorPos(vector, movetime).SetEase(Ease.Linear);
+                            }
+
+                            this.setPos(true);
+                        }
+                    }
+                    else if (Input.GetKey(KeyCode.LeftArrow))
+                    {
+                        Stage.act_start = false;
+                        attack_flg = true;
+                        cost = Stage.cost["cost" + (Mathf.Ceil(unitinfo.X) - 1) + "_" + Mathf.Ceil(unitinfo.Y)];
+                        this.setAlign(1);
+
+                        if (cost != 9999)
+                        {
+                            unitinfo.X -= moverate;
+
+                            if ((unitinfo.X * Sphere.TIP_SIZE) <= (_stage.x - Sphere.TIP_SIZE * 2) * -1)
+                            {
+                                Vector3 vector = new Vector3(_stage.x + (Sphere.TIP_SIZE * moverate), _stage.y, _stage.z);
+                                Stage.GetComponent<RectTransform>().DOAnchorPos(vector, movetime).SetEase(Ease.Linear);
+                            }
+
+                            this.setPos(true);
+                        }
+                    }
+                    else if (Input.GetKey(KeyCode.RightArrow))
+                    {
+                        Stage.act_start = false;
+                        attack_flg = true;
+                        cost = Stage.cost["cost" + (Mathf.Floor(unitinfo.X) + 1) + "_" + Mathf.Ceil(unitinfo.Y)];
+                        this.setAlign(2);
+
+                        if (cost != 9999)
+                        {
+                            unitinfo.X += moverate;
+                            if ((unitinfo.X * Sphere.TIP_SIZE) >= Stage.GetComponent<RectTransform>().rect.width - _stage.x - (Sphere.TIP_SIZE * 2))
+                            {
+                                Vector3 vector = new Vector3(_stage.x - (Sphere.TIP_SIZE * moverate), _stage.y, _stage.z);
+                                Stage.GetComponent<RectTransform>().DOAnchorPos(vector, movetime).SetEase(Ease.Linear);
+                            }
+
+                            this.setPos(true);
+                        }
                     }
                 }
-                else if (Input.GetKey(KeyCode.DownArrow))
+                else
                 {
-                    Stage.act_start = false;
-                    cost = Mathf.Max(Stage.cost["cost" + Mathf.Floor(unitinfo.X) + "_" + (Mathf.Floor(unitinfo.Y) + 1)], Stage.cost["cost" + Mathf.Ceil(unitinfo.X) + "_" + (Mathf.Floor(unitinfo.Y) + 1)]);
-                    this.setAlign(0);
+                    var targetunit = Sphere.getUnitByCode("avatar");
 
-                    if (cost != 9999)
+                    var pos = getPos(targetunit.no);
+                    var mypos = getPos(unitinfo.no);
+
+                    var _moverate = moverate / 2;
+
+                    if (pos["x"] >= mypos["x"])
                     {
-                        unitinfo.Y += moverate;
-                        if ((unitinfo.Y * Sphere.TIP_SIZE) >= _stage.y + Stage.GetComponent<RectTransform>().rect.height - (Sphere.TIP_SIZE * 2))
-                        {
-                            Vector3 vector = new Vector3(_stage.x, _stage.y + (Sphere.TIP_SIZE * moverate), _stage.z);
-                            Stage.GetComponent<RectTransform>().DOAnchorPos(vector, movetime).SetEase(Ease.Linear);
-                        }
-
-                        this.setPos(true);
+                        unitinfo.X += _moverate;
                     }
-                }
-                else if (Input.GetKey(KeyCode.LeftArrow))
-                {
-                    Stage.act_start = false;
-                    cost = Stage.cost["cost" + (Mathf.Ceil(unitinfo.X) - 1) + "_" + Mathf.Ceil(unitinfo.Y)];
-                    this.setAlign(1);
-
-                    if (cost != 9999)
+                    else
                     {
-                        unitinfo.X -= moverate;
-
-                        if ((unitinfo.X * Sphere.TIP_SIZE) <= (_stage.x - Sphere.TIP_SIZE * 2) * -1)
-                        {
-                            Vector3 vector = new Vector3(_stage.x + (Sphere.TIP_SIZE * moverate), _stage.y, _stage.z);
-                            Stage.GetComponent<RectTransform>().DOAnchorPos(vector, movetime).SetEase(Ease.Linear);
-                        }
-
-                        this.setPos(true);
+                        unitinfo.X -= _moverate;
                     }
-                }
-                else if (Input.GetKey(KeyCode.RightArrow))
-                {
-                    Stage.act_start = false;
-                    cost = Stage.cost["cost" + (Mathf.Floor(unitinfo.X) + 1) + "_" + Mathf.Ceil(unitinfo.Y)];
-                    this.setAlign(2);
 
-                    if (cost != 9999)
+                    if (pos["y"] >= mypos["y"])
                     {
-                        unitinfo.X += moverate;
-                        if ((unitinfo.X * Sphere.TIP_SIZE) >=  Stage.GetComponent<RectTransform>().rect.width - _stage.x - (Sphere.TIP_SIZE * 2))
-                        {
-                            Vector3 vector = new Vector3(_stage.x - (Sphere.TIP_SIZE * moverate), _stage.y, _stage.z);
-                            Stage.GetComponent<RectTransform>().DOAnchorPos(vector, movetime).SetEase(Ease.Linear);
-                        }
-
-                        this.setPos(true);
+                        unitinfo.Y += _moverate;
                     }
+                    else
+                    {
+                        unitinfo.Y -= _moverate;
+                    }
+                    this.setPos(true);
                 }
-
-
             }
             catch (Exception e)
             {
@@ -193,10 +246,19 @@ public class UnitBehaviour : MonoBehaviour
         {
             if (collision.transform.name.Contains("unit_") && transform.name.Contains("unit_"))
             {
-                if(no == PLAYER_ID)
+                if (unitinfo.code == "avatar")
                 {
                     int colno = int.Parse(collision.transform.name.Split('_')[1]);
                     jsonUnit colunitinfo = Sphere.sphere.unit[colno];
+
+                    damag(colunitinfo);
+                }
+            }
+            else if (collision.transform.name.Contains("weapon_") && transform.name.Contains("unit_"))
+            {
+                if (unitinfo.code != "avatar")
+                {
+                    jsonUnit colunitinfo = Sphere.sphere.unit[PLAYER_ID];
 
                     damag(colunitinfo);
                 }
@@ -216,8 +278,7 @@ public class UnitBehaviour : MonoBehaviour
             UeveBehaviour _ueve = UnityEngine.Object.Instantiate(Sphere.ueve, new Vector3(0, 0, 0), Quaternion.identity, Stage.transform);
             _ueve.transform.localPosition = new Vector3(0, 0, 0);
 
-            var effType = "dam";
-            var battleResult = omissionBattle(emeny ,unitinfo);
+            var battleResult = omissionBattle(emeny, unitinfo);
 
             int damage = (int)battleResult["defender"];
 
@@ -229,28 +290,24 @@ public class UnitBehaviour : MonoBehaviour
             }
 
             unitinfo.Status.hp -= damage;
-            HP.show(no);
+
+            if (unitinfo.code == "avatar") 
+                HP.show(unitinfo.no);
 
             if (death)
             {
-                if(no == PLAYER_ID)
+                if (unitinfo.code == "avatar")
                 {
-                    Sphere.GameOver(no, damage);
+                    Sphere.GameOver(unitinfo.no, damage);
                 }
                 else
                 {
-                    _ueve.Play(no, effType, damage.ToString());
-
-                    StartCoroutine(setEffects(effType));
-
-                    Stage.objUnits.remove(no);
+                    Sphere.DeadEnemy(unitinfo.no, damage);
                 }
             }
             else
             {
-                _ueve.Play(no, effType, damage.ToString());
-
-                StartCoroutine(setEffects(effType));
+                Sphere.Damage(unitinfo.no, damage);
             }
         }
     }
@@ -260,12 +317,31 @@ public class UnitBehaviour : MonoBehaviour
     // 表示座標を変更する。
     public void setAlign(int _graphAlign)
     {
-
         //向きを更新する
         this.graphAlign = _graphAlign;
         //コルーチンとタイミング合わない時があるのでひとまず変えておく
         ParticleSystemRenderer avatar_renderer = AvatarImage.GetComponent<ParticleSystemRenderer>();
         avatar_renderer.material.SetTexture("_MainTex", _sprites[this.graphAlign + "_1"].texture);
+
+        switch (_graphAlign)
+        {
+            case 0:
+                weapon_slash.transform.rotation = Quaternion.Euler(0, 0, 90);
+                weapon_slash.transform.localPosition = new Vector3(53f, -146, 0);
+                break;
+            case 1:
+                weapon_slash.transform.rotation = Quaternion.Euler(0, 0, 0);
+                weapon_slash.transform.localPosition = new Vector3(-93f, -46f, 0);
+                break;
+            case 2:
+                weapon_slash.transform.rotation = Quaternion.Euler(0, 180, 0);
+                weapon_slash.transform.localPosition = new Vector3(172f, -46f, 0);
+                break;
+            case 3:
+                weapon_slash.transform.rotation = Quaternion.Euler(0, 0, -90);
+                weapon_slash.transform.localPosition = new Vector3(53f, 35f, 0);
+                break;
+        }
     }
 
 
@@ -294,6 +370,17 @@ public class UnitBehaviour : MonoBehaviour
         }
     }
 
+    private Dictionary<string, float> getPos(int unitNo)
+    {
+        jsonUnit _unitinfo = Sphere.sphere.unit[unitNo];
+
+        Dictionary<string, float> pos = new Dictionary<string, float>();
+        pos.Add("x", (int)_unitinfo.X);
+        pos.Add("y", (int)_unitinfo.Y);
+
+        return pos;
+    }
+
     public void setPos(bool move = false)
     {
         int no = int.Parse(transform.name.Split('_')[1]);
@@ -316,6 +403,31 @@ public class UnitBehaviour : MonoBehaviour
             transform.localPosition = vector;
         }
 
+    }
+
+    public IEnumerator SlashAttack()
+    {
+        while (true)
+        {
+            if (attack_flg)
+            {
+                weapon_slash.SetActive(true);
+
+                var _attack_name = "Slash";
+
+                int hashAnim = Animator.StringToHash(_attack_name);
+                AudioManager.Instance.PlaySE("se_slashblade");
+                SlashAnim.Play(hashAnim);
+
+                yield return null;
+                yield return new WaitForAnimation(SlashAnim, 0);
+
+                Anim.SetBool(_attack_name, false);
+                weapon_slash.SetActive(false);
+            }
+
+            yield return new WaitForSeconds(cooldown);
+        }
     }
 
     /// <summary>

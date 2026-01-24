@@ -29,7 +29,7 @@ public class Units
 
         Debug.Log("Units Start running..");
         // 念のため、コピー元のオリジナルムービーを非表示にしておく。
-        //source.enabled = false;
+        source.gameObject.SetActive(false);
 
         // ユニットを作成＆配置
         for (int no = 1; no <= Sphere.sphere.unitNum; no++)
@@ -56,6 +56,8 @@ public class Units
 
             // ユニットムービーを複製
             UnitBehaviour _unit = UnityEngine.Object.Instantiate(source, new Vector3(0, 0, 0), Quaternion.identity, Stage.transform);
+            _unit.gameObject.SetActive(true);
+
             _unit.name = "unit_" + no.ToString();
 
             units[_unit.name] = _unit;
@@ -68,7 +70,6 @@ public class Units
 
             // 表示座標を反映。
             units["unit_" + no.ToString()].setPos();
-
         }
         else
         {

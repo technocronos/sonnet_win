@@ -1,4 +1,5 @@
 ﻿using Scenes.Common.Scripts;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -95,8 +96,15 @@ class PointR
         if (onMark)
         {
             // カーソル地点のマーク値を取得。マーク値が無効あれば選択は無効。
-            int markVal = Stage.objMarker.marks["mark" + Stage.cursorX + "_" + Stage.cursorY];
-            if (markVal < 0) invalid = "onMark";
+            try
+            {
+                int markVal = Stage.objMarker.marks["mark" + Stage.cursorX + "_" + Stage.cursorY];
+                if (markVal < 0) invalid = "onMark";
+            }
+            catch (Exception e)
+            {
+                return;
+            }
         }
 
         // ユニット制約が課されていて、フォーカスしているユニットがそれと
@@ -118,9 +126,17 @@ class PointR
         if (onMark)
         {
             // カーソル地点のマーク値を取得。マーク値が無効あれば選択は無効。
-            int markVal = Stage.objMarker.marks["mark" + move_x + "_" + move_y];
+            try
+            {
+                int markVal = Stage.objMarker.marks["mark" + move_x + "_" + move_y];
 
-            if (markVal < 0) _invalid = "onMark";
+                if (markVal < 0) _invalid = "onMark";
+
+            }
+            catch (Exception e)
+            {
+                return;
+            }
         }
 
         // ユニット制約が課されていて、フォーカスしているユニットがそれと

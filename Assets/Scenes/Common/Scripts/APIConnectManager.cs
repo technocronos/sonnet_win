@@ -1880,9 +1880,12 @@ public class jsonEquipSet
 [Serializable]
 public class jsonUnit
 {
+    public int no;
     public string Name;
     public float X;
     public float Y;
+    public string code;
+    public string act_brain;
     public UnitInfo Info = new UnitInfo();
     public UnitStatus Status = new UnitStatus();
     public List<int> Item = new List<int>();

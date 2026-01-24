@@ -1,13 +1,14 @@
-﻿using Newtonsoft.Json;
+﻿using DG.Tweening;
+using MyScene;
+using Newtonsoft.Json;
+using Scenes.Common.Scripts;
+using System;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using TMPro;
-using System;
+using UnityEditor.Localization.Plugins.XLIFF.V12;
+using UnityEngine;
 using UnityEngine.UI;
-using MyScene;
-using Scenes.Common.Scripts;
-using DG.Tweening;
 
 public class SphereBehaviour : BaseBehaviour
 {
@@ -475,6 +476,11 @@ public class SphereBehaviour : BaseBehaviour
     {
         return "UEXIT " + unitNo + " collap";
     }
+    private string COMMAND_UEXIT2(int unitNo)
+    {
+        return "UEXIT2 " + unitNo + " collap";
+    }
+
     private string COMMAND_TRANS_FIELDEND()
     {
         return "TRANS scene=FieldEnd&sphereId=" + Param.sphereId;
@@ -500,11 +506,28 @@ public class SphereBehaviour : BaseBehaviour
         return "DAMAG " + no + " " + damage;
     }
 
+    private string COMMAND_DAMAG2(int no, int damage)
+    {
+        return "DAMAG2 " + no + " " + damage;
+    }
+
     public void Damage(int no, int damage)
     {
         List<string> command = new List<string>();
 
-        command.Add(COMMAND_DAMAG(no, damage));
+        command.Add(COMMAND_DAMAG2(no, damage));
+        command.Add("COMND " + UnitBehaviour.PLAYER_ID);
+
+        LeadCall(command);
+    }
+
+    public void DeadEnemy(int no, int damage)
+    {
+        List<string> command = new List<string>();
+
+        command.Add(COMMAND_DAMAG2(no, damage));
+        command.Add(COMMAND_UEXIT2(no));
+        command.Add("COMND " + UnitBehaviour.PLAYER_ID);
 
         LeadCall(command);
     }
@@ -609,14 +632,19 @@ public class SphereBehaviour : BaseBehaviour
                 case "DAMAG":
                 //DAMAG 001 1
                 case "RECOV":
-                    //RECOV 001 1000
+                //RECOV 001 1000
+                case "DAMAG2":
+                //DAMAG 001 1
+                case "RECOV2":
 
                     // FOCUS⇒UEVNT⇒UEFCT⇒DELAY に変換する
                     leader.unitNo = lead.Split(new char[] { ' ' })[1];
                     string num = lead.Split(new char[] { ' ' })[2];
-                    string effType = (lead.Split(new char[] { ' ' })[0] == "DAMAG") ? "dam" : "recov";
+                    string effType = (lead.Split(new char[] { ' ' })[0].Contains("DAMAG")) ? "dam" : "recov";
 
-                    leader.flow.Add("FOCUS " + leader.unitNo);
+                    if(lead.Split(new char[] { ' ' })[0] == "DAMAG" || lead.Split(new char[] { ' ' })[0] == "RECOV")
+                        leader.flow.Add("FOCUS " + leader.unitNo);
+
                     leader.flow.Add("UEVNT " + leader.unitNo + " " + effType + " " + num);
                     leader.flow.Add("UEFCT " + leader.unitNo + " " + effType);
                     break;
@@ -692,11 +720,15 @@ public class SphereBehaviour : BaseBehaviour
 
                 // ユニットの退場
                 case "UEXIT":
+                case "UEXIT2":
                     //UEXIT 003 collap
 
                     // FOCUS⇒UEFCT⇒DELAY⇒UREMV に変換する
                     leader.unitNo = lead.Split(new char[] { ' ' })[1];
-                    leader.flow.Add("FOCUS " + leader.unitNo);
+
+                    if (lead.Split(new char[] { ' ' })[0] == "UEXIT")
+                        leader.flow.Add("FOCUS " + leader.unitNo);
+
                     leader.flow.Add("UEFCT " + leader.unitNo + " " + lead.Split(new char[] { ' ' })[2]);
                     leader.flow.Add("UREMV " + leader.unitNo);
 
@@ -1681,6 +1713,55 @@ public class SphereBehaviour : BaseBehaviour
 
         return unitNo;
     }
+
+    public jsonUnit getUnit(int no)
+    {
+        jsonUnit _unit = null;
+
+        // ユニットを一つずつ見ていく。
+        for (int i = 1; i <= sphere.unitNum; i++)
+        {
+
+            if (sphere.unit.ContainsKey(i))
+            {
+                jsonUnit unitinfo = sphere.unit[i];
+
+                // 指定された座標に存在するユニットが見つかったらその番号を戻り値にセット。X=-1は削除されたユニット
+                if (unitinfo.no == no)
+                {
+                    _unit = unitinfo;
+                    break;
+                }
+            }
+        }
+
+        return _unit;
+    }
+
+    public jsonUnit getUnitByCode(string code)
+    {
+        jsonUnit _unit = null;
+
+        // ユニットを一つずつ見ていく。
+        for (int i = 1; i <= sphere.unitNum; i++)
+        {
+
+            if (sphere.unit.ContainsKey(i))
+            {
+                jsonUnit unitinfo = sphere.unit[i];
+
+                // 指定された座標に存在するユニットが見つかったらその番号を戻り値にセット。X=-1は削除されたユニット
+                if (unitinfo.code == code)
+                {
+                    _unit = unitinfo;
+                    break;
+                }
+            }
+        }
+
+        return _unit;
+    }
+
 
     //
     // 指定されたポイントからポイントへ一定スピードで動くときの計算を行う。
