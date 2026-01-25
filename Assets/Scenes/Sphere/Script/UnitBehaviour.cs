@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEditor.Experimental.GraphView;
+using UnityEditor.Localization.Plugins.XLIFF.V12;
 using UnityEngine;
 
 public class UnitBehaviour : MonoBehaviour
@@ -100,16 +101,17 @@ public class UnitBehaviour : MonoBehaviour
         }
 
         // Coroutineをとりあえず動かしておく。
-        StartCoroutine(this.anim());
+        StartCoroutine(this.walk());
     }
 
     private void Update()
     {
-        if (commandkeyrecv)
+        try
         {
-            try
+            if (commandkeyrecv && Sphere.gamestate.is_gameover == false)
             {
-                if(unitinfo.act_brain == "manual")
+
+                if (unitinfo.act_brain == "manual")
                 {
                     Vector3 _stage = Stage.GetComponent<RectTransform>().anchoredPosition;
                     int cost = 0;
@@ -200,32 +202,51 @@ public class UnitBehaviour : MonoBehaviour
                     var pos = getPos(targetunit.no);
                     var mypos = getPos(unitinfo.no);
 
-                    var _moverate = moverate / 2;
+                    var _moverate = moverate * 1;
 
                     if (pos["x"] >= mypos["x"])
                     {
-                        unitinfo.X += _moverate;
+                        var cost = Stage.cost["cost" + (Mathf.Floor(unitinfo.X) + 1) + "_" + Mathf.Ceil(unitinfo.Y)];
+                        if(cost != 9999) { 
+                            unitinfo.X += _moverate;
+                            this.setAlign(2);
+                        }
                     }
                     else
                     {
-                        unitinfo.X -= _moverate;
+                        var cost = Stage.cost["cost" + (Mathf.Ceil(unitinfo.X) - 1) + "_" + Mathf.Ceil(unitinfo.Y)];
+                        if (cost != 9999)
+                        {
+                            unitinfo.X -= _moverate;
+                            this.setAlign(1);
+                        }
                     }
 
                     if (pos["y"] >= mypos["y"])
                     {
-                        unitinfo.Y += _moverate;
+                        var cost = Mathf.Max(Stage.cost["cost" + Mathf.Floor(unitinfo.X) + "_" + (Mathf.Floor(unitinfo.Y) + 1)], Stage.cost["cost" + Mathf.Ceil(unitinfo.X) + "_" + (Mathf.Floor(unitinfo.Y) + 1)]);
+                        if (cost != 9999)
+                        {
+                            unitinfo.Y += _moverate;
+                            this.setAlign(0);
+                        }
                     }
                     else
                     {
-                        unitinfo.Y -= _moverate;
+                        var cost = Mathf.Max(Stage.cost["cost" + Mathf.Floor(unitinfo.X) + "_" + (Mathf.Ceil(unitinfo.Y) - 1)], Stage.cost["cost" + Mathf.Ceil(unitinfo.X) + "_" + (Mathf.Ceil(unitinfo.Y) - 1)]);
+                        if (cost != 9999)
+                        {
+                            unitinfo.Y -= _moverate;
+                            this.setAlign(0);
+                        }
                     }
                     this.setPos(true);
                 }
             }
-            catch (Exception e)
-            {
-                return;
-            }
+        }
+        catch (Exception e)
+        {
+            return;
         }
 
     }
@@ -251,7 +272,7 @@ public class UnitBehaviour : MonoBehaviour
                     int colno = int.Parse(collision.transform.name.Split('_')[1]);
                     jsonUnit colunitinfo = Sphere.sphere.unit[colno];
 
-                    damag(colunitinfo);
+                    StartCoroutine(CalcDamage(colunitinfo));
                 }
             }
             else if (collision.transform.name.Contains("weapon_") && transform.name.Contains("unit_"))
@@ -260,7 +281,7 @@ public class UnitBehaviour : MonoBehaviour
                 {
                     jsonUnit colunitinfo = Sphere.sphere.unit[PLAYER_ID];
 
-                    damag(colunitinfo);
+                    StartCoroutine(CalcDamage(colunitinfo));
                 }
             }
         }
@@ -270,13 +291,12 @@ public class UnitBehaviour : MonoBehaviour
         }
     }
 
-    private void damag(jsonUnit emeny)
+    private IEnumerator CalcDamage(jsonUnit emeny)
     {
         //unionが違う場合のみダメージを与える
         if (emeny.Info.union != unitinfo.Info.union)
         {
-            UeveBehaviour _ueve = UnityEngine.Object.Instantiate(Sphere.ueve, new Vector3(0, 0, 0), Quaternion.identity, Stage.transform);
-            _ueve.transform.localPosition = new Vector3(0, 0, 0);
+            if (unitinfo.Status.hp <= 0 || emeny.Status.hp <= 0) yield break;
 
             var battleResult = omissionBattle(emeny, unitinfo);
 
@@ -298,18 +318,52 @@ public class UnitBehaviour : MonoBehaviour
             {
                 if (unitinfo.code == "avatar")
                 {
+                    Sphere.gamestate.is_gameover = true;
+                    commandkeyrecv = false;
+                    Stage.act_start = true;
+
+                    UnitEvent(unitinfo.no, "dam", damage);
+                    StartCoroutine(setEffects("dam"));
+                    yield return StartCoroutine(wait_effec());
+
+                    StartCoroutine(setEffects("collap"));
+                    yield return StartCoroutine(wait_effec());
+
+                    UnitRemove();
+
                     Sphere.GameOver(unitinfo.no, damage);
                 }
                 else
                 {
-                    Sphere.DeadEnemy(unitinfo.no, damage);
+                    //Sphere.DeadEnemy(unitinfo.no, damage);
+
+                    UnitEvent(unitinfo.no, "dam", damage);
+                    StartCoroutine(setEffects("dam"));
+                    yield return StartCoroutine(wait_effec());
+
+                    StartCoroutine(setEffects("collap"));
+                    yield return StartCoroutine(wait_effec());
+                    UnitRemove();
                 }
             }
             else
             {
-                Sphere.Damage(unitinfo.no, damage);
+                //Sphere.Damage(unitinfo.no, damage);
+                UnitEvent(unitinfo.no, "dam",damage);
+                StartCoroutine(setEffects("dam"));
             }
         }
+    }
+
+    IEnumerator wait_effec()
+    {
+        while (this.stop)
+        {
+            Debug.Log("wait_effec run...");
+            yield return null;
+        }
+
+        Debug.Log("wait_effec end...");
     }
 
     //
@@ -347,7 +401,7 @@ public class UnitBehaviour : MonoBehaviour
 
     public bool stop { get; set; } = false;
 
-    IEnumerator anim()
+    IEnumerator walk()
     {
 
         int _frame = align_flame;
@@ -430,6 +484,14 @@ public class UnitBehaviour : MonoBehaviour
         }
     }
 
+    public void UnitEvent(int targetNo, string effType, int value)
+    {
+        UeveBehaviour _ueve = UnityEngine.Object.Instantiate(Sphere.ueve, new Vector3(0, 0, 0), Quaternion.identity, Stage.transform);
+        _ueve.transform.localPosition = new Vector3(0, 0, 0);
+
+        _ueve.Play(targetNo, effType, value.ToString());
+    }
+
     /// <summary>
     /// recov
     /// damag
@@ -442,6 +504,7 @@ public class UnitBehaviour : MonoBehaviour
 
         //エフェクト中は歩かない
         this.stop = true;
+        isCancelled = false;
 
         //サウンド再生。recovはコマンドで鳴らしているので不要。
         switch (_effectName)
@@ -455,14 +518,39 @@ public class UnitBehaviour : MonoBehaviour
         }
 
         int hashAnim = Animator.StringToHash(_effectName);
-        Anim.Play(hashAnim);
+        Anim.Play(hashAnim, 0, 0f);
 
-        yield return null;
-        yield return new WaitForAnimation(Anim, 0);
+        yield return new WaitUntil(() =>
+            Anim.GetCurrentAnimatorStateInfo(0).normalizedTime >= 1f
+            || isCancelled);
+
+        if (isCancelled)
+        {
+            Debug.Log("アニメーションがキャンセルされました");
+        }
+        else
+        {
+            Debug.Log("アニメーションが通常終了しました");
+        }
 
         stop = false;
         Anim.SetBool(_effectName, false);
 
+    }
+
+    bool isCancelled = false;
+    // 他の場所でキャンセルしたい場合
+    public void CancelAnimation()
+    {
+        isCancelled = true;
+    }
+
+    private void UnitRemove()
+    {
+        // 無効なユニットである場合はX座標上での位置でそれを示す
+        unitinfo.X = -1;
+
+        GameObject.Destroy(transform.gameObject);
     }
 
     public double getSpeedBalance(jsonUnit sideP, jsonUnit sideE)

@@ -325,6 +325,33 @@ public class StageBehaviour : BaseBehaviour
 
     private void Update()
     {
+
+        // Escキーでポーズ/ポーズ解除（ゲームオーバー中は無効）
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            if (Sphere.gamestate.is_gameover)
+            {
+                // ゲームオーバー中は何もしない
+                return;
+            }
+            if (Sphere.gamestate.is_pause == false)
+            {
+                Sphere.gamestate.is_pause = true;
+                // ポーズ中はEscキーでポーズ解除
+                Sphere.showPreter("Esc:pause解除", "center");
+                Time.timeScale = 0.0f;
+                AudioManager.Instance.PauseBGM();
+            }
+            else
+            {
+                Sphere.gamestate.is_pause = false;
+                // ポーズ中でない場合はポーズを開く
+                Sphere.Preter.SetActive(false);
+                Time.timeScale = 1f;
+                AudioManager.Instance.UnPauseBGM();
+            }
+        }
+
         return;
 
         if (User == null) return;

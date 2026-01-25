@@ -115,6 +115,8 @@ public class TipBehaviour : MonoBehaviour
 
     public void setCost()
     {
+        return;
+
         transform.GetComponent<Rigidbody2D>().simulated = true;
         transform.GetComponent<Collider2D>().enabled = true;
     }

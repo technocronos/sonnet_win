@@ -505,6 +505,7 @@ public class UserBehaviour : MonoBehaviour
                 // 確認のメッセージを出す。
                 okcanceltext = Utility.getText("SPHERE_SASP_CONFIRM");
 
+                Time.timeScale = 0.0f;
                 OkCancel.show(okcanceltext, "bottom");
 
                 this.Phase();

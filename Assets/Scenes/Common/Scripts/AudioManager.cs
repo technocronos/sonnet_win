@@ -261,6 +261,17 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         _bgmSource.Stop();
     }
 
+    public void PauseBGM()
+    {
+        _bgmSource.Pause();
+    }
+
+    public void UnPauseBGM()
+    {
+        _bgmSource.UnPause();
+    }
+
+
     /// <summary>
     /// 現在流れている曲をフェードアウトさせる
     /// fadeSpeedRateに指定した割合でフェードアウトするスピードが変わる

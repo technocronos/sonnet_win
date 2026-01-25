@@ -9,6 +9,7 @@ using TMPro;
 using UnityEditor.Localization.Plugins.XLIFF.V12;
 using UnityEngine;
 using UnityEngine.UI;
+using static SphereBehaviour;
 
 public class SphereBehaviour : BaseBehaviour
 {
@@ -62,6 +63,16 @@ public class SphereBehaviour : BaseBehaviour
     }
 
     private static SphereBehaviour instance;
+
+
+    public class GameState
+    {
+        public bool is_gamestart = false;
+        public bool is_pause = false;
+        public bool is_gameover = false;
+    }
+
+    public GameState gamestate = new GameState();
 
     //システム文言
     public string ERROR_RELOAD { get; set; }
@@ -534,13 +545,14 @@ public class SphereBehaviour : BaseBehaviour
 
     public void GameOver(int no, int damage)
     {
-        Stage.objUnits.units["unit_" + no].commandkeyrecv = false;
-        Stage.act_start = true;
+        //Time.timeScale = 0.0f;
+
+        //Stage.objUnits.units["unit_" + no].commandkeyrecv = false;
+        //Stage.act_start = true;
 
         List<string> command = new List<string>();
-
-        command.Add(COMMAND_DAMAG(no, damage));
-        command.Add(COMMAND_UEXIT(no));
+        //command.Add(COMMAND_DAMAG(no, damage));
+        //command.Add(COMMAND_UEXIT(no));
         //command.Add(COMMAND_TRANS_FIELDEND());
         command.Add(COMMAND_TRANS_REOPEN());
 
@@ -832,6 +844,7 @@ public class SphereBehaviour : BaseBehaviour
                 {
                     //それ以外はBGMを鳴らして画面表示
                     AudioManager.Instance.PlayBGM(sphere.bgm, AudioManager.BGM_VOLUME_DEFULT);
+                    gamestate.is_gamestart = true;
                     DispatchEvent(CwEvent.SCENE_READY);
                 }
             }
@@ -1259,12 +1272,11 @@ public class SphereBehaviour : BaseBehaviour
 
             // ユニットにxxxのタイプのユニットイベントを表示する。
             case "UEVNT":
-                //複製する
-                UeveBehaviour _ueve = UnityEngine.Object.Instantiate(ueve, new Vector3(0, 0, 0), Quaternion.identity, Stage.transform);
-                _ueve.transform.localPosition = new Vector3(0, 0, 0);
-
                 string[] arg = command.Split(new char[] { ' ' });
-                _ueve.Play(int.Parse(arg[1]), arg[2], arg[3]);
+
+                UnitBehaviour _ueve = Stage.objUnits.units["unit_" + int.Parse(arg[1])];
+                _ueve.UnitEvent(int.Parse(arg[1]), arg[2], int.Parse(arg[3]));
+  
                 break;
 
             // ユニットにエフェクトを再生させる。
