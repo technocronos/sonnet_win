@@ -516,6 +516,7 @@ public class UserBehaviour : MonoBehaviour
 
                 // フィールドマーカーをクリア
                 Stage.objMarker.clearMarker();
+                Time.timeScale = 1f;
 
                 // 中断の場合は、中断用URLに遷移するようにする。
                 if (itemNo == -1)
