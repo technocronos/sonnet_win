@@ -2029,6 +2029,7 @@ public class jsonSphere
 
     public jsonRaidDungeon raid_dungeon;
 
+    public string jsonfile;
 }
 
 [Serializable]

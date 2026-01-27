@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -35,6 +35,8 @@ namespace Scenes.Common.Scripts
 
         public static string AP_DEVKEY = "rokG9uJaSGjzDqqJ9n98i4";
         public static string AP_APPID = "1372485938";
+
+        public static string SPHERE_FLAG_KEY = "SPHERE_FLAG_KEY";
 
 #if RELEASE
         public const string Environment = "本番環境";

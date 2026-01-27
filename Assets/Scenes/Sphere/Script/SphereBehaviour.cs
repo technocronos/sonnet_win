@@ -1,6 +1,7 @@
 ﻿using DG.Tweening;
 using MyScene;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Scenes.Common.Scripts;
 using System;
 using System.Collections;
@@ -211,6 +212,12 @@ public class SphereBehaviour : BaseBehaviour
     {
         this.JsonToClass(json);
 
+        // JSONファイルからギミックを初期化
+        if (!string.IsNullOrEmpty(sphere.jsonfile))
+        {
+            InitializeGimmicksFromJson(sphere.jsonfile, "start", "start");
+        }
+
         Stage = StageBehaviour.Instance;
         //ステージ作成、開始
         Stage.init();
@@ -218,49 +225,6 @@ public class SphereBehaviour : BaseBehaviour
         EnvironmentBehaviour.Instance.setEnv(sphere.environment);
 
         actPt = sphere.actionPt;
-
-        /*
-        EASY_MODE = sphere.EASY_MODE;
-
-        //元々easymodeのクエストは変更できない
-        if (EASY_MODE == 1)
-            EASY_MODE_CHANGE = false;
-
-        //easymodeが変更できるクエストの場合
-        if (EASY_MODE_CHANGE)
-        {
-            //preyerprefから保存しているsphereidを得る
-            int easymode_sphere_id = PlayerPrefs.GetInt(Settings.EASYMODE_SPHEREID, 0);
-            //sphereidが一致したら
-            if (easymode_sphere_id == Param.sphereId)
-            {
-                //設定を戻す 
-                EASY_MODE = PlayerPrefs.GetInt(Settings.EASYMODE_SPHERE);
-            }
-            else
-            {
-                PlayerPrefs.SetInt(Settings.EASYMODE_SPHEREID, Param.sphereId);
-                PlayerPrefs.SetInt(Settings.EASYMODE_SPHERE, EASY_MODE);
-            }
-        }
-        */
-
-
-        //ApDispPanel.GetComponent<apDispBehaviour>().init();
-
-        if (sphere.raid_dungeon.status == constants.Raid_Dungeon.START)
-        {
-            raidDisp.gameObject.SetActive(true);
-            RaidButtonText.DOFade(0.0f, 1f).SetEase(Ease.InCubic).SetLoops(-1, LoopType.Yoyo);
-            raidDisp.onClick.RemoveAllListeners();
-            raidDisp.onClick.AddListener(() =>
-            {
-                AudioManager.Instance.PlaySE("se_btn");
-
-                RaidMonstar.SetActive(true);
-                RaidMonstar.GetComponent<RaidMonstarBehaviour>().init(sphere.raid_dungeon.id);
-            });
-        }
 
         User = UserBehaviour.Instance;
 
@@ -1509,6 +1473,8 @@ public class SphereBehaviour : BaseBehaviour
                     jsonunitlist.Name = jsonunitlistlocal.Name;
                     jsonunitlist.X = jsonunitlistlocal.X;
                     jsonunitlist.Y = jsonunitlistlocal.Y;
+                    jsonunitlist.code = jsonunitlistlocal.code;
+                    jsonunitlist.act_brain = jsonunitlistlocal.act_brain;
                     jsonunitlist.Info.graphNo = int.Parse(jsonunitlistlocal.Info.Split(new char[] { ' ' })[0]);
                     jsonunitlist.Info.union = int.Parse(jsonunitlistlocal.Info.Split(new char[] { ' ' })[1]);
                     jsonunitlist.Info.cost = int.Parse(jsonunitlistlocal.Info.Split(new char[] { ' ' })[2]);
@@ -1593,6 +1559,8 @@ public class SphereBehaviour : BaseBehaviour
         public string Name;
         public float X;
         public float Y;
+        public string code;
+        public string act_brain;
         public string Info;
         public string Status;
         public string Item;
@@ -1809,6 +1777,451 @@ public class SphereBehaviour : BaseBehaviour
 
 
         return src;
+    }
+
+    //=====================================================================================================
+    // ギミック初期化関連メソッド（サーバ側のinitGimmicksと関連関数を移植）
+    //=====================================================================================================
+
+    // ギミックデータを格納するDictionary
+    protected Dictionary<string, JObject> gimmicks = new Dictionary<string, JObject>();
+
+    /// <summary>
+    /// ギミックを初期化する（サーバ側のinitGimmicksに相当）
+    /// </summary>
+    /// <param name="roomName">ルーム名</param>
+    /// <param name="roomInfo">ルーム定義（JSONオブジェクト）</param>
+    /// <param name="reason">理由を表す文字列。通常、クエスト開始なら "start"</param>
+    protected void InitGimmicks(string roomName, JObject roomInfo, string reason)
+    {
+        // 初期化
+        gimmicks.Clear();
+
+        // 定義されているギミックを一つずつ処理していく
+        var gimmicksNode = roomInfo["gimmicks"];
+        if (gimmicksNode != null && gimmicksNode.Type == JTokenType.Object)
+        {
+            foreach (var gimmickPair in (JObject)gimmicksNode)
+            {
+                string name = gimmickPair.Key;
+                JObject gimmick = gimmickPair.Value as JObject;
+                if (gimmick != null)
+                {
+                    AddGimmick(name, gimmick, roomName, reason);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 引数に指定されたギミックをこのスフィアに追加する（サーバ側のaddGimmickに相当）
+    /// </summary>
+    /// <param name="name">ギミック名</param>
+    /// <param name="gimmick">ギミックの内容（JSONオブジェクト）</param>
+    /// <param name="roomName">ルーム名</param>
+    /// <param name="reason">理由を表す文字列</param>
+    /// <returns>追加したのなら true、しなかったのなら false</returns>
+    protected bool AddGimmick(string name, JObject gimmick, string roomName = "", string reason = "")
+    {
+        // "switch" キーが付いているものは最初に処理する
+        if (gimmick["switch"] != null)
+        {
+            var switchNode = gimmick["switch"];
+            var gimmickCopy = gimmick.DeepClone() as JObject;
+            gimmickCopy.Remove("switch");
+
+            // "switch" キーを一つずつ見ていく
+            if (switchNode.Type == JTokenType.Array)
+            {
+                foreach (var caseNode in (JArray)switchNode)
+                {
+                    if (caseNode.Type == JTokenType.Object)
+                    {
+                        // "switch" キーの要素でオリジナルギミックの内容をマージしてギミックを作成
+                        var merge = new JObject(gimmickCopy);
+                        foreach (var prop in (JObject)caseNode)
+                        {
+                            merge[prop.Key] = prop.Value;
+                        }
+
+                        // それを追加してみる。追加できたのなら終了
+                        if (AddGimmick(name, merge, roomName, reason))
+                            return true;
+                    }
+                }
+            }
+
+            // ここまで来るのはいずれの "switch" キーでも追加できなかったから。このギミックは追加できない
+            return false;
+        }
+
+        // "one_shot"フラグが定義されている場合は、"yet_flag" と "flag_on" に展開する
+        if (gimmick["one_shot"] != null)
+        {
+            var oneShot = gimmick["one_shot"];
+            gimmick.Remove("one_shot");
+            
+            if (gimmick["condition"] == null)
+                gimmick["condition"] = new JObject();
+            
+            ((JObject)gimmick["condition"])["yet_flag"] = oneShot;
+            gimmick["flag_on"] = oneShot;
+        }
+
+        // "memory_shot"フラグが定義されている場合は、"yet_memory" と "memory_on" に展開する
+        if (gimmick["memory_shot"] != null)
+        {
+            var memoryShot = gimmick["memory_shot"];
+            gimmick.Remove("memory_shot");
+            
+            if (gimmick["condition"] == null)
+                gimmick["condition"] = new JObject();
+            
+            ((JObject)gimmick["condition"])["yet_memory"] = memoryShot;
+            gimmick["memory_on"] = memoryShot;
+        }
+
+        // 条件に該当しない場合は追加しない
+        gimmick["name"] = name;
+        var condition = gimmick["condition"];
+        if (!TestCondition(condition, gimmick, reason))
+            return false;
+        
+        gimmick.Remove("name");
+        gimmick.Remove("condition");
+
+        // 置物を一緒に置くように指定されている場合は...
+        if (gimmick["ornament"] != null)
+        {
+            // ornament キーを削除する代わりに ornNo で紐づいている置物を指すようにする
+            var ornamentType = gimmick["ornament"].ToString();
+            gimmick.Remove("ornament");
+            
+            var ornNoArray = new JArray();
+            gimmick["ornNo"] = ornNoArray;
+
+            // ギミックの設置範囲の右下座標を取得
+            var pos = gimmick["pos"] as JArray;
+            var rb = gimmick["rb"] as JArray ?? pos;
+
+            if (pos != null && rb != null)
+            {
+                int posX = pos[0].Value<int>();
+                int posY = pos[1].Value<int>();
+                int rbX = rb[0].Value<int>();
+                int rbY = rb[1].Value<int>();
+
+                // 設置範囲のすべての座標に置物を置く
+                // 注意: Unity側では実際の置物配置処理が必要な場合は、ここでマップシステムに通知する
+                for (int y = posY; y <= rbY; y++)
+                {
+                    for (int x = posX; x <= rbX; x++)
+                    {
+                        // 置物を追加する処理（Unity側の実装に応じて変更が必要）
+                        // int ornNo = map.AddOrnament(x, y, ornamentType);
+                        // ornNoArray.Add(ornNo);
+                    }
+                }
+            }
+        }
+
+        // コメントは削除
+        gimmick.Remove("rem");
+
+        // スフィアに追加
+        gimmicks[name] = gimmick;
+
+        return true;
+    }
+
+    /// <summary>
+    /// 引数で指定された条件に該当しているかどうかを返す（サーバ側のtestConditionに相当）
+    /// </summary>
+    /// <param name="condition">条件（JSONオブジェクト）</param>
+    /// <param name="owner">ギミックまたはユニット定義（JSONオブジェクト）</param>
+    /// <param name="reason">理由を表す文字列</param>
+    /// <returns>条件に該当している、あるいは条件がない場合は true、該当しない場合は false</returns>
+    protected bool TestCondition(JToken condition, JObject owner, string reason)
+    {
+        // 特に条件がないなら常にtrue
+        if (condition == null || condition.Type == JTokenType.Null)
+            return true;
+
+        if (condition.Type != JTokenType.Object)
+            return true;
+
+        string method = "and";
+
+        // 指定されている条件をすべてチェック
+        foreach (var condPair in (JObject)condition)
+        {
+            string condName = condPair.Key;
+            var value = condPair.Value;
+
+            // "yet_flag" は "!has_flag" に、"yet_memory" は "!has_memory" に変換する
+            if (condName == "yet_flag")
+                condName = "!has_flag";
+            if (condName == "yet_memory")
+                condName = "!has_memory";
+
+            // 条件名が "!" で始まっているものは逆評価する
+            bool positive = !condName.StartsWith("!");
+            if (!positive)
+                condName = condName.Substring(1);
+
+            // 条件名が "|" で始まっているものはOR条件
+            if (condName.StartsWith("|"))
+            {
+                method = "or";
+                condName = condName.Substring(1);
+            }
+
+            // 判定
+            bool result = JudgeCondition(condName, value, owner, reason);
+
+            if (method == "and")
+            {
+                // 一つでも偽なら、条件には該当しない
+                if (positive != result)
+                    return false;
+            }
+            else
+            {
+                // 一つでも真なら、条件に該当
+                if (positive == result)
+                    return true;
+            }
+        }
+
+        if (method == "and")
+            // ここまで来たらすべて該当している
+            return true;
+        else
+            // ここまで来たらすべてfalse
+            return false;
+    }
+
+    /// <summary>
+    /// testCondition()のヘルパ。一つ一つの条件判定を行う（サーバ側のjudgeConditionに相当）
+    /// </summary>
+    protected bool JudgeCondition(string name, JToken value, JObject owner, string reason)
+    {
+        switch (name)
+        {
+            // クリアしている／いない
+            case "cleared":
+                // Unity側ではstateから取得する必要がある
+                // bool cleared = sphere.state.cleared;
+                // return cleared == value.Value<bool>();
+                Debug.LogWarning($"cleared condition not fully implemented: {value}");
+                return false;
+
+            // 指定の理由
+            case "reason":
+                if (value.Type == JTokenType.Array)
+                {
+                    foreach (var v in (JArray)value)
+                    {
+                        if (v.ToString() == reason)
+                            return true;
+                    }
+                    return false;
+                }
+                return value.ToString() == reason;
+
+            // チェックメモリがある
+            case "has_memory":
+                // Unity側ではstateから取得する必要がある
+                // var memory = sphere.state.memory;
+                // return memory != null && memory[value.ToString()] != null && memory[value.ToString()].Value<bool>();
+                Debug.LogWarning($"has_memory condition not fully implemented: {value}");
+                return false;
+
+            // チェックフラグがある（Unity側では実装が異なる可能性がある）
+            case "has_flag":
+                // Unity側でのフラグチェック処理が必要
+                Debug.LogWarning($"has_flag condition not implemented: {value}");
+                return false;
+
+            // ミッションが存在する／しない
+            case "mission":
+                // Unity側ではstateから取得する必要がある
+                // bool missionExists = sphere.state.mission_exists;
+                // return missionExists == value.Value<bool>();
+                Debug.LogWarning($"mission condition not fully implemented: {value}");
+                return false;
+
+            // 指定のユニットのどれかがいる
+            case "unit":
+            case "unit_exist":
+                if (value.Type == JTokenType.Array)
+                {
+                    foreach (var codeToken in (JArray)value)
+                    {
+                        string code = codeToken.ToString();
+                        if (getUnitByCode(code) != null)
+                            return true;
+                    }
+                }
+                else
+                {
+                    string code = value.ToString();
+                    if (getUnitByCode(code) != null)
+                        return true;
+                }
+                return false;
+
+            // 指定のユニットのどれかがいない
+            case "unit_nonexist":
+                if (value.Type == JTokenType.Array)
+                {
+                    foreach (var codeToken in (JArray)value)
+                    {
+                        string code = codeToken.ToString();
+                        if (getUnitByCode(code) == null)
+                            return true;
+                    }
+                }
+                else
+                {
+                    string code = value.ToString();
+                    if (getUnitByCode(code) == null)
+                        return true;
+                }
+                return false;
+
+            // 指定のユニットのどれかがまだ生きている
+            case "unit_alive":
+                if (value.Type == JTokenType.Array)
+                {
+                    foreach (var codeToken in (JArray)value)
+                    {
+                        string code = codeToken.ToString();
+                        var unit = getUnitByCode(code);
+                        if (unit != null && unit.Status.hp > 0)
+                            return true;
+                    }
+                }
+                else
+                {
+                    string code = value.ToString();
+                    var unit = getUnitByCode(code);
+                    if (unit != null && unit.Status.hp > 0)
+                        return true;
+                }
+                return false;
+
+            // 指定のユニットが起動した
+            case "igniter":
+                if (value.Type == JTokenType.Array)
+                {
+                    foreach (var v in (JArray)value)
+                    {
+                        if (v.ToString() == reason)
+                            return true;
+                    }
+                    return false;
+                }
+                return value.ToString() == reason;
+
+            // カスタムコール（Unity側では実装が異なる可能性がある）
+            case "call":
+                // Unity側でのカスタムメソッド呼び出し処理が必要
+                Debug.LogWarning($"call condition not implemented: {value}");
+                return false;
+
+            // その他の条件は無視
+            default:
+                return true;
+        }
+    }
+
+    /// <summary>
+    /// 通常のギミック終了処理を行わずに、指定されたギミックを削除する
+    /// </summary>
+    public void RemoveGimmick(string name)
+    {
+        gimmicks.Remove(name);
+    }
+
+    /// <summary>
+    /// 指定のギミックの指定のプロパティの値を変更する
+    /// </summary>
+    public void ModifyGimmick(string gimName, string propName, JToken value)
+    {
+        if (gimmicks.ContainsKey(gimName))
+        {
+            gimmicks[gimName][propName] = value;
+        }
+    }
+
+    /// <summary>
+    /// JSONファイルからフィールド定義を取得し、ルーム情報を取得する
+    /// </summary>
+    protected JObject GetRoomDefinition(JObject fieldData, string roomName)
+    {
+        var rooms = fieldData["rooms"] as JObject;
+        if (rooms == null)
+            return null;
+
+        var room = rooms[roomName];
+        if (room == null)
+            return null;
+
+        // キーにルーム情報が入っているならそれを返す
+        if (room.Type == JTokenType.Object)
+            return room as JObject;
+
+        // それ以外なら、それは別定義ファイルのIDと解釈して読み込む
+        // Unity側では別ファイルの読み込み処理が必要
+        Debug.LogWarning($"Room definition file reference not implemented: {room}");
+        return null;
+    }
+
+    /// <summary>
+    /// JSONファイルを初期化する（onStartで呼び出す）
+    /// </summary>
+    /// <param name="jsonFileContent">JSONファイルの内容（文字列）</param>
+    /// <param name="roomName">初期ルーム名（通常は "start"）</param>
+    /// <param name="reason">理由（通常は "start"）</param>
+    public void InitializeGimmicksFromJson(string jsonFileContent, string roomName = "start", string reason = "start")
+    {
+        try
+        {
+            // JSONをパース
+            JObject fieldData = JObject.Parse(jsonFileContent);
+            
+            // ルーム定義を取得
+            JObject roomInfo = GetRoomDefinition(fieldData, roomName);
+            if (roomInfo == null)
+            {
+                Debug.LogError($"Room '{roomName}' not found in field data");
+                return;
+            }
+
+            // グローバル値をマージ
+            if (fieldData["global_gimmicks"] != null)
+            {
+                var globalGimmicks = fieldData["global_gimmicks"] as JObject;
+                if (roomInfo["gimmicks"] == null)
+                    roomInfo["gimmicks"] = new JObject();
+                
+                var roomGimmicks = roomInfo["gimmicks"] as JObject;
+                foreach (var gimmickPair in globalGimmicks)
+                {
+                    roomGimmicks[gimmickPair.Key] = gimmickPair.Value;
+                }
+            }
+
+            // ギミックを初期化
+            InitGimmicks(roomName, roomInfo, reason);
+            
+            Debug.Log($"Gimmicks initialized for room '{roomName}'");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Failed to initialize gimmicks from JSON: {e.Message}");
+        }
     }
 
 }
