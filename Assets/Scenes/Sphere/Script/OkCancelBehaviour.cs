@@ -18,39 +18,6 @@ public class OkCancelBehaviour : MonoBehaviour
     {
         Text.text = _text;
 
-        SphereBehaviour Sphere = SphereBehaviour.Instance;
-        StageBehaviour Stage = StageBehaviour.Instance;
-        UserBehaviour User = UserBehaviour.Instance;
-
-        //X座標を決定する
-        double y;
-        double y_margin;
-
-        //ステージの座標を得る
-        Vector3 _stage = Stage.transform.GetComponent<RectTransform>().anchoredPosition;
-        Rect _stage_rect = Stage.transform.GetComponent<RectTransform>().rect;
-
-        //ステージにまず親を合わせる
-        Rect rect = transform.GetComponent<RectTransform>().rect;
-        transform.GetComponent<RectTransform>().anchoredPosition = new Vector3(_stage.x * -1, 0, 0);
-
-        //ダイアログを合わせる
-        Rect rect_dialogue = transform.Find("OkCancelPanel").GetComponent<RectTransform>().rect;
-
-        //Y座標を決定する
-        if (_stage_rect.height / 2 > Mathf.Abs(Stage.cursorY * Sphere.TIP_SIZE))
-        {
-            y = (Mathf.Abs(Stage.cursorY) * Sphere.TIP_SIZE) + (rect_dialogue.height / 2);
-        }
-        else
-        {
-            y = (Mathf.Abs(Stage.cursorY) * Sphere.TIP_SIZE) - rect_dialogue.height;
-        }
-
-        transform.Find("OkCancelPanel").GetComponent<RectTransform>().anchoredPosition = new Vector3(0, (float)y * -1, 0);
-
-        transform.GetComponent<RectTransform>().SetAsLastSibling();
-
         transform.gameObject.SetActive(true);
     }
 
