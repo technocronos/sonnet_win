@@ -8,6 +8,7 @@ using MyScene;
 using UnityEngine.AddressableAssets;
 using UnityEngine.Localization.Settings;
 using Steamworks;
+using Newtonsoft.Json;
 
 public class APIConnectManager : EventDispatcher
 {
@@ -22,6 +23,7 @@ public class APIConnectManager : EventDispatcher
     public jsonLogin login;
     public jsonRegist regist;
     public jsonConstants constants;
+    public jsonMasterData masterData;
 
     //コルーチンを途中で完全に停止させるため変数にいれる
     private IEnumerator _routine = null;
@@ -781,6 +783,18 @@ public class APIConnectManager : EventDispatcher
         this._eventCallback = eventCallback;
 
         string param = "?module=Api&action=MonsterList" + "&category=" + category + "&oauth=" + login.oauth + "&ver=" + Settings.ver + "&lang=" + PlayerPrefs.GetInt(Settings.LANGUAGE_SELECTED_KEY);
+
+        Connect(param);
+    }
+
+    /// <summary>
+    /// マスターデータを取得する
+    /// </summary>
+    public void MasterData(EventCallback eventCallback)
+    {
+        this._eventCallback = eventCallback;
+
+        string param = "?module=Api&action=MasterData" + "&oauth=" + login.oauth + "&ver=" + Settings.ver + "&lang=" + PlayerPrefs.GetInt(Settings.LANGUAGE_SELECTED_KEY);
 
         Connect(param);
     }
@@ -3581,4 +3595,11 @@ public class jsonRaidRankingList
 
     public jsonChara avatar;
 
+}
+
+[Serializable]
+public class jsonMasterData
+{
+    public string result;
+    public Dictionary<string, object> masters;
 }

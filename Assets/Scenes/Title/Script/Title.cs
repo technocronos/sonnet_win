@@ -76,6 +76,41 @@ public class Title : BaseBehaviour
 
         AudioManager.Instance.Init();
 
+        // マスターデータ取得（character_info など）
+        bool masterLoaded = false;
+        APIConnectManager.Instance.MasterData((string json) =>
+        {
+            try
+            {
+                APIConnectManager.Instance.masterData = JsonConvert.DeserializeObject<jsonMasterData>(json);
+
+                if (APIConnectManager.Instance.masterData != null)
+                {
+                    // character_info マスタを型付きで展開
+                    CharacterInfoModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    // item_master マスタを型付きで展開
+                    ItemMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    Debug.Log("MasterData loaded. tables=" +
+                              (APIConnectManager.Instance.masterData.masters != null
+                                  ? APIConnectManager.Instance.masterData.masters.Count
+                                  : 0) +
+                              ", character_info rows=" + CharacterInfoModel.Rows.Count +
+                              ", item_master rows=" + ItemMasterModel.Rows.Count);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("MasterData parse error: " + e.Message);
+            }
+
+            masterLoaded = true;
+        });
+
+        while (!masterLoaded)
+        {
+            yield return null;
+        }
+
         yield return StartCoroutine(reload());
     }
 
