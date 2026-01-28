@@ -70,6 +70,7 @@ public class SphereBehaviour : BaseBehaviour
     {
         public bool is_gamestart = false;
         public bool is_pause = false;
+        public bool is_stop = false;
         public bool is_gameover = false;
     }
 
@@ -310,13 +311,26 @@ public class SphereBehaviour : BaseBehaviour
         }
     }
 
-
-
     void showStory(string _text)
     {
         StoryText.text = _text;
         Story.SetActive(true);
 
+    }
+
+    void Update()
+    {
+        if (gamestate.is_gamestart && gamestate.is_gameover == false)
+        {
+            // プレイヤーユニットを取得
+            jsonUnit playerUnit = getUnitByCode("avatar");
+            if (playerUnit != null)
+            {
+                // プレイヤーが移動したかどうかを判定（簡易版）
+                // 実際には前フレームの位置と比較する必要がある
+                CheckGimmickByUnit(playerUnit, false);
+            }
+        }
     }
 
     //
@@ -1354,7 +1368,7 @@ public class SphereBehaviour : BaseBehaviour
     IEnumerator wait_effec(UnitBehaviour _unit)
     {
         //ステージスクロールが終わるまで待機
-        while (_unit.stop)
+        while (_unit.walk_stop)
         {
             Debug.Log("wait_effec run...");
             yield return null;
@@ -2037,11 +2051,11 @@ public class SphereBehaviour : BaseBehaviour
                 Debug.LogWarning($"has_memory condition not fully implemented: {value}");
                 return false;
 
-            // チェックフラグがある（Unity側では実装が異なる可能性がある）
+            // チェックフラグがある（PlayerPrefsで管理）
             case "has_flag":
-                // Unity側でのフラグチェック処理が必要
-                Debug.LogWarning($"has_flag condition not implemented: {value}");
-                return false;
+                int flagId = value.Value<int>();
+                string flagKey = $"SPHERE_FLAG_{flagId}";
+                return PlayerPrefs.GetInt(flagKey, 0) == 1;
 
             // ミッションが存在する／しない
             case "mission":
@@ -2145,6 +2159,271 @@ public class SphereBehaviour : BaseBehaviour
     }
 
     /// <summary>
+    /// 引数で指定されたギミックをただちに起動する（サーバ側のtriggerGimmickに相当）
+    /// </summary>
+    /// <param name="name">ギミック名</param>
+    /// <param name="unit">ギミックを発動させたユニットのインスタンス。ユニットによらないならnull</param>
+    /// <returns>SWFへのリターンが発生したかどうか</returns>
+    public bool TriggerGimmick(string name, jsonUnit unit = null)
+    {
+        // 指定のギミックがもう死んでいるなら何もしない
+        if (!gimmicks.ContainsKey(name))
+            return false;
+
+        // 指定されたギミックを取得して、ギミック名を "name" キーに格納する
+        JObject gimmick = gimmicks[name] as JObject;
+        gimmick["name"] = name;
+
+        // "touch" を処理（連鎖発動）
+        if (gimmick["touch"] != null)
+        {
+            var touchArray = gimmick["touch"] as JArray;
+            if (touchArray != null)
+            {
+                foreach (var touch in touchArray)
+                {
+                    TriggerGimmick(touch.ToString(), unit);
+                }
+            }
+        }
+
+        // "ignition" の条件を満たしていない場合は無視する
+        var ignition = gimmick["ignition"];
+        string unitCode = unit != null ? unit.code : "";
+        if (!TestCondition(ignition, gimmick, unitCode))
+            return false;
+
+        // 発動⇒終了
+        bool swfReturn1 = FireGimmick(gimmick, unit);
+        bool swfReturn2 = CloseGimmick(gimmick, unit);
+
+        // リターン
+        return swfReturn1 || swfReturn2;
+    }
+
+    /// <summary>
+    /// 引数で指定されたギミックの発動を処理する（サーバ側のfireGimmickに相当）
+    /// </summary>
+    /// <param name="gimmick">ギミック。"name" キーにギミック名が格納されている</param>
+    /// <param name="unit">ギミックを発動させたユニットのインスタンス。ユニットによらないならnull</param>
+    /// <returns>SWFへのリターンが発生したかどうか</returns>
+    protected bool FireGimmick(JObject gimmick, jsonUnit unit)
+    {
+        var typeToken = gimmick["type"];
+        if (typeToken == null)
+            return false;
+
+        string type = typeToken.ToString();
+
+        // 基底で処理できるなら処理する
+        switch (type)
+        {
+            // 指揮
+            case "lead":
+                // 埋め込みコードを置き換えて、指揮に追加
+                var leadsToken = gimmick["leads"];
+                if (leadsToken != null && leadsToken.Type == JTokenType.Array)
+                {
+                    var leadsArray = leadsToken as JArray;
+                    mitter.lead.Clear();
+                    int leadIndex = 1;
+                    foreach (var lead in leadsArray)
+                    {
+                        string leadStr = ReplaceEmbedCode(lead.ToString(), unit);
+                        mitter.lead["lead" + leadIndex] = leadStr;
+                        leadIndex++;
+                    }
+                    // Lead()を呼び出して処理
+                    Lead();
+                }
+
+                // SWFへ返すかどうかは設定次第
+                return gimmick["swf_return"] != null && gimmick["swf_return"].Value<bool>();
+
+            // 寸劇
+            case "drama":
+                // シーンを寸劇に変更（Unity側では実装が異なる可能性がある）
+                // sphere.state.scene = "drama";
+                // sphere.state.scene_id = gimmick["drama_id"].Value<int>();
+                // sphere.state.scene_trigger = gimmick["name"].ToString();
+                Debug.LogWarning($"drama type gimmick not fully implemented: {gimmick["name"]}");
+                return true;
+
+            // アイテムゲット
+            case "treasure":
+                // アイテム取得処理（Unity側では実装が異なる可能性がある）
+                if (gimmick["item_id"] != null)
+                {
+                    int itemId = gimmick["item_id"].Value<int>();
+                    // アイテムを取得するユニットを取得
+                    // "treasure_catcher" が指定されているならそのユニット、されてないなら起動したユニット
+                    jsonUnit catcher = unit;
+                    if (gimmick["treasure_catcher"] != null)
+                    {
+                        string catcherCode = gimmick["treasure_catcher"].ToString();
+                        catcher = getUnitByCode(catcherCode);
+                    }
+                    // アイテム取得処理（Unity側の実装に応じて変更が必要）
+                    Debug.LogWarning($"treasure item_id={itemId} not fully implemented");
+                }
+
+                // ゴールド取得
+                if (gimmick["gold"] != null)
+                {
+                    int gold = gimmick["gold"].Value<int>();
+                    // ゴールド取得処理（Unity側の実装に応じて変更が必要）
+                    Debug.LogWarning($"treasure gold={gold} not fully implemented");
+                }
+
+                return false;
+
+            // その他のタイプは未実装
+            default:
+                Debug.LogWarning($"Gimmick type '{type}' not implemented: {gimmick["name"]}");
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// 埋め込みコードを置き換える（サーバ側のreplaceEmbedCodeに相当）
+    /// </summary>
+    /// <param name="lead">指揮文字列</param>
+    /// <param name="unit">発動ユニット（null可）</param>
+    /// <returns>置き換え後の指揮文字列</returns>
+    protected string ReplaceEmbedCode(string lead, jsonUnit unit)
+    {
+        string result = lead;
+
+        // ユニットのコードと番号の対応表を取得
+        Dictionary<string, string> map = new Dictionary<string, string>();
+        foreach (var unitPair in sphere.unit)
+        {
+            if (unitPair.Value != null && !string.IsNullOrEmpty(unitPair.Value.code))
+            {
+                string code = unitPair.Value.code;
+                int no = unitPair.Value.no;
+                map[$"%{code}%"] = no.ToString("D3");
+            }
+        }
+
+        // "[NAME]" が含まれている場合、プレイヤーアバタの名前を取得
+        if (result.Contains("[NAME]") && !map.ContainsKey("[NAME]"))
+        {
+            // Unity側ではプレイヤー名の取得方法が異なる可能性がある
+            // とりあえず空文字列にしておく（必要に応じて実装）
+            map["[NAME]"] = "";
+        }
+
+        // "%xxx%" と "[NAME]" の置き換え
+        foreach (var kvp in map)
+        {
+            result = result.Replace(kvp.Key, kvp.Value);
+        }
+
+        // コマンドごとの特殊処理（RPBG1, AALGN など）は必要に応じて実装
+        // 現時点では基本的な置き換えのみ
+
+        return result;
+    }
+
+    /// <summary>
+    /// 引数で指定されたギミックの終了処理を行う（サーバ側のcloseGimmickに相当）
+    /// </summary>
+    /// <param name="gimmick">ギミック</param>
+    /// <param name="unit">ギミックを発動させたユニットのインスタンス。ユニットによらないならnull</param>
+    /// <returns>SWFへのリターンが発生したかどうか</returns>
+    protected bool CloseGimmick(JObject gimmick, jsonUnit unit)
+    {
+        bool swfReturn = false;
+
+        // "lasting" が設定されてないならギミックを削除
+        var lastingToken = gimmick["lasting"];
+        int lasting = lastingToken != null ? lastingToken.Value<int>() : 1;
+        if (lasting <= 1)
+        {
+            string gimmickName = gimmick["name"].ToString();
+            RemoveGimmick(gimmickName);
+
+            // 置物が関連付けられている場合は合わせて削除
+            if (gimmick["ornNo"] != null)
+            {
+                var ornNoArray = gimmick["ornNo"] as JArray;
+                if (ornNoArray != null)
+                {
+                    foreach (var ornNo in ornNoArray)
+                    {
+                        int ornNoInt = ornNo.Value<int>();
+                        // 置物削除処理（Unity側の実装に応じて変更が必要）
+                        Debug.LogWarning($"Ornament removal not fully implemented: ornNo={ornNoInt}");
+                    }
+                }
+            }
+        }
+        else
+        {
+            // "lasting" が設定されているならカウントダウンする
+            gimmick["lasting"] = lasting - 1;
+        }
+
+        // 永続フラグをONにするよう指示されている場合はONにする
+        if (gimmick["flag_on"] != null)
+        {
+            int flagId = gimmick["flag_on"].Value<int>();
+            string flagKey = $"SPHERE_FLAG_{flagId}";
+            PlayerPrefs.SetInt(flagKey, 1);
+            PlayerPrefs.Save();
+        }
+
+        // メモリフラグをONにするよう指示されている場合はONにする
+        if (gimmick["memory_on"] != null)
+        {
+            int memoryId = gimmick["memory_on"].Value<int>();
+            // Unity側ではstate.memoryに保存する必要がある
+            // sphere.state.memory[memoryId] = true;
+            Debug.LogWarning($"memory_on not fully implemented: memoryId={memoryId}");
+        }
+
+        // one_shot が設定されている場合はフラグを立てる
+        if (gimmick["one_shot"] != null)
+        {
+            int flagId = gimmick["one_shot"].Value<int>();
+            string flagKey = $"SPHERE_FLAG_{flagId}";
+            PlayerPrefs.SetInt(flagKey, 1);
+            PlayerPrefs.Save();
+        }
+
+        // ギミックにchainが設定されている場合は起動する
+        if (gimmick["chain"] != null)
+        {
+            var chainArray = gimmick["chain"] as JArray;
+            if (chainArray != null)
+            {
+                foreach (var chain in chainArray)
+                {
+                    swfReturn = swfReturn || TriggerGimmick(chain.ToString(), unit);
+                }
+            }
+        }
+
+        // ギミックにchain_delayedが設定されている場合はイベントをキューに
+        if (gimmick["chain_delayed"] != null)
+        {
+            var chainDelayedArray = gimmick["chain_delayed"] as JArray;
+            if (chainDelayedArray != null)
+            {
+                foreach (var chain in chainDelayedArray)
+                {
+                    // イベントキューにpush（Unity側の実装に応じて変更が必要）
+                    Debug.LogWarning($"chain_delayed not fully implemented: {chain}");
+                }
+            }
+        }
+
+        // リターン
+        return swfReturn;
+    }
+
+    /// <summary>
     /// 指定のギミックの指定のプロパティの値を変更する
     /// </summary>
     public void ModifyGimmick(string gimName, string propName, JToken value)
@@ -2222,6 +2501,159 @@ public class SphereBehaviour : BaseBehaviour
         {
             Debug.LogError($"Failed to initialize gimmicks from JSON: {e.Message}");
         }
+    }
+
+    /// <summary>
+    /// ユニットの進入によるギミック発動がないかチェックする（サーバ側のcheckGimmickByUnitに相当）
+    /// </summary>
+    /// <param name="unit">進入しているかもしれないユニットのインスタンス</param>
+    /// <param name="stayPos">ユニットが移動を行わず留まっているならtrue</param>
+    protected void CheckGimmickByUnit(jsonUnit unit, bool stayPos = false)
+    {
+        if (unit == null)
+            return;
+
+        // 対象ユニットがいる座標にあるギミックのインデックスをすべて取得
+        Vector2Int unitPos = new Vector2Int((int)unit.X, (int)unit.Y);
+        List<string> gimmickNames = FindGimmicksOnPosition(unitPos);
+
+        // 対象ユニットかどうか確認していく
+        foreach (string name in gimmickNames)
+        {
+            if (!gimmicks.ContainsKey(name))
+                continue;
+
+            JObject gimmick = gimmicks[name] as JObject;
+            if (gimmick == null)
+                continue;
+
+            // ユニットが留まっている場合は、"always" フラグがないギミックは無視する
+            if (stayPos && (gimmick["always"] == null || !gimmick["always"].Value<bool>()))
+                continue;
+
+            // 対象ユニットでないなら次へ
+            var triggerToken = gimmick["trigger"];
+            string trigger = triggerToken != null ? triggerToken.ToString() : "";
+
+            bool isTarget = false;
+            switch (trigger)
+            {
+                case "hero":
+                    if (unit.code == "avatar")
+                        isTarget = true;
+                    break;
+                case "player":
+                    // Unity側ではplayer_ownerプロパティの判定が必要（現時点では未実装）
+                    Debug.LogWarning($"trigger 'player' not fully implemented for gimmick: {name}");
+                    break;
+                case "all":
+                    isTarget = true;
+                    break;
+                case "unit_into":
+                    if (gimmick["unit_into"] != null)
+                    {
+                        var unitIntoArray = gimmick["unit_into"] as JArray;
+                        if (unitIntoArray != null)
+                        {
+                            foreach (var codeToken in unitIntoArray)
+                            {
+                                if (codeToken.ToString() == unit.code)
+                                {
+                                    isTarget = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    break;
+                default:
+                    // triggerが指定されていない場合はスキップ
+                    break;
+            }
+
+            if (!isTarget)
+                continue;
+
+            // ギミックを発動
+            TriggerGimmick(name, unit);
+        }
+    }
+
+    /// <summary>
+    /// 指定された座標に位置しているギミックの名前を返す（サーバ側のmap->findOnに相当）
+    /// </summary>
+    /// <param name="point">座標</param>
+    /// <returns>ギミック名のリスト</returns>
+    protected List<string> FindGimmicksOnPosition(Vector2Int point)
+    {
+        List<string> result = new List<string>();
+
+        // 検査対象を一つずつ見ていく
+        foreach (var gimmickPair in gimmicks)
+        {
+            string name = gimmickPair.Key;
+            JObject gimmick = gimmickPair.Value as JObject;
+            if (gimmick == null)
+                continue;
+
+            // キー"pos" を持っていないものは無視
+            var posToken = gimmick["pos"];
+            if (posToken == null)
+                continue;
+
+            // 対象に当たっているならヒット
+            if (IsHit(point, gimmick))
+                result.Add(name);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 指定された座標が、指定された対象物に当たっているかどうかを返す（サーバ側のSphereMap::isHitに相当）
+    /// </summary>
+    /// <param name="point">調べたい座標</param>
+    /// <param name="aim">対象物（ギミック）。少なくともキー "pos" を持っていること。"rb", "mask" を持っている場合はそれも加味される</param>
+    /// <returns>当たっているなら true、当たっていないなら false</returns>
+    protected bool IsHit(Vector2Int point, JObject aim)
+    {
+        var posToken = aim["pos"];
+        if (posToken == null)
+            return false;
+
+        var posArray = posToken as JArray;
+        if (posArray == null || posArray.Count < 2)
+            return false;
+
+        int posX = posArray[0].Value<int>();
+        int posY = posArray[1].Value<int>();
+
+        // キー "rb" がないなら1点のみで当たり判定する
+        var rbToken = aim["rb"];
+        if (rbToken == null)
+        {
+            return (point.x == posX && point.y == posY);
+        }
+
+        var rbArray = rbToken as JArray;
+        if (rbArray == null || rbArray.Count < 2)
+            return (point.x == posX && point.y == posY);
+
+        int rbX = rbArray[0].Value<int>();
+        int rbY = rbArray[1].Value<int>();
+
+        // 対象よりも左・上に位置しているなら当たってない
+        if (point.x < posX || point.y < posY)
+            return false;
+
+        // 対象よりも右・下に位置しているなら当たってない
+        if (rbX < point.x || rbY < point.y)
+            return false;
+
+        // キー "mask" を持っている場合の処理（現時点では未実装）
+        // Unity側では必要に応じて実装
+
+        return true;
     }
 
 }

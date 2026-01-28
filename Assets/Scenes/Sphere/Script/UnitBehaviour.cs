@@ -25,6 +25,9 @@ public class UnitBehaviour : MonoBehaviour
     StageBehaviour Stage { get; set; }
     UserBehaviour User { get; set; }
 
+    //歩行エフェクトを止める
+    public bool walk_stop { get; set; } = false;
+
     /// <summary>
     /// マスが75だがunitは72なのでマージンを入れる 
     /// </summary>
@@ -109,7 +112,7 @@ public class UnitBehaviour : MonoBehaviour
     {
         try
         {
-            if (commandkeyrecv && Sphere.gamestate.is_gameover == false)
+            if (commandkeyrecv && !Sphere.gamestate.is_gameover && !Sphere.gamestate.is_stop)
             {
                 /*
                  manual - プレイヤー操作
@@ -403,7 +406,7 @@ public class UnitBehaviour : MonoBehaviour
 
     IEnumerator wait_effec()
     {
-        while (this.stop)
+        while (this.walk_stop)
         {
             Debug.Log("wait_effec run...");
             yield return null;
@@ -444,9 +447,6 @@ public class UnitBehaviour : MonoBehaviour
         }
     }
 
-
-    public bool stop { get; set; } = false;
-
     IEnumerator walk()
     {
 
@@ -457,7 +457,7 @@ public class UnitBehaviour : MonoBehaviour
             //0.5秒に一回
             yield return new WaitForSeconds(0.5f);
 
-            if (!stop)
+            if (!walk_stop || !Sphere.gamestate.is_stop)
             {
                 if (_count >= _frame)
                     _count = 0;
@@ -468,17 +468,6 @@ public class UnitBehaviour : MonoBehaviour
                 _count++;
             }
         }
-    }
-
-    private Dictionary<string, float> getPos(int unitNo)
-    {
-        jsonUnit _unitinfo = Sphere.sphere.unit[unitNo];
-
-        Dictionary<string, float> pos = new Dictionary<string, float>();
-        pos.Add("x", (int)_unitinfo.X);
-        pos.Add("y", (int)_unitinfo.Y);
-
-        return pos;
     }
 
     public void setPos(bool move = false)
@@ -509,7 +498,7 @@ public class UnitBehaviour : MonoBehaviour
     {
         while (true)
         {
-            if (attack_flg)
+            if (attack_flg && !walk_stop && !Sphere.gamestate.is_stop)
             {
                 weapon_slash.SetActive(true);
 
@@ -549,7 +538,7 @@ public class UnitBehaviour : MonoBehaviour
         Debug.Log("UnitBehaviour setEffects run.. _effectName=" + _effectName);
 
         //エフェクト中は歩かない
-        this.stop = true;
+        this.walk_stop = true;
         isCancelled = false;
 
         //サウンド再生。recovはコマンドで鳴らしているので不要。
@@ -579,7 +568,7 @@ public class UnitBehaviour : MonoBehaviour
             Debug.Log("アニメーションが通常終了しました");
         }
 
-        stop = false;
+        walk_stop = false;
         Anim.SetBool(_effectName, false);
 
     }

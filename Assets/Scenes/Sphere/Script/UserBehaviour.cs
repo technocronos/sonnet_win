@@ -505,7 +505,7 @@ public class UserBehaviour : MonoBehaviour
                 // 確認のメッセージを出す。
                 okcanceltext = Utility.getText("SPHERE_SASP_CONFIRM");
 
-                Time.timeScale = 0.0f;
+                Sphere.gamestate.is_stop = true;
                 OkCancel.show(okcanceltext, "bottom");
 
                 this.Phase();
@@ -516,7 +516,6 @@ public class UserBehaviour : MonoBehaviour
 
                 // フィールドマーカーをクリア
                 Stage.objMarker.clearMarker();
-                Time.timeScale = 1f;
 
                 // 中断の場合は、中断用URLに遷移するようにする。
                 if (itemNo == -1)

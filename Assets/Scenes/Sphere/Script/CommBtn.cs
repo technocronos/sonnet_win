@@ -109,7 +109,7 @@ class CommBtn
             if (mode == 3 && User.command == "susp")
                 User.itemNo = 0;
 
-            Time.timeScale = 1f;
+            Sphere.gamestate.is_stop = false;
             User.OkCancel.hide();
             Sphere.Preter.SetActive(false);
             User.Cancel();
