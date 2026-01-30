@@ -1,10 +1,11 @@
-﻿using System.Collections;
+﻿using DG.Tweening;
+using Scenes.Common.Scripts;
+using StateManager;
+using System.Collections;
 using System.Collections.Generic;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
-using StateManager;
-using Scenes.Common.Scripts;
-using DG.Tweening;
 
 //----------------------------------------------------------------------
 // メッセージウィンドウやユーザ制御を除く、ステージ全体を管理する
@@ -311,6 +312,10 @@ public class StageBehaviour : BaseBehaviour
                 scrolling = false;
                 User.actX = actX;
                 User.actY = actY;
+
+                //Sphere.gamestate.is_stop = false;
+                act_start = false;
+
             }
 
             // 振動が設定されている場合は処理する。
@@ -540,7 +545,7 @@ public class StageBehaviour : BaseBehaviour
 
     //
     // カーソルを変数 moveX, moveY で示された場所へ移動する。
-    public void moveCsr()
+    public void moveCsr(bool is_center = true)
     {
         Debug.Log("moveCsr running...");
 
@@ -551,12 +556,15 @@ public class StageBehaviour : BaseBehaviour
         // 反映。
         _cursor.transform.localPosition = new Vector3(cursorX * Sphere.TIP_SIZE, cursorY * Sphere.TIP_SIZE * -1);
 
-        // カーソルが画面内に収まるようにオフセットを設定し直す。
-        lef = Sphere.STAGE_MARGIN;
-        top = Sphere.TOP_MARGIN;
-        rig = Sphere.STAGE_MARGIN;
-        bot = Sphere.BOTTOM_MARGIN;
-        this.center();
+        if (is_center)
+        {
+            // カーソルが画面内に収まるようにオフセットを設定し直す。
+            lef = Sphere.STAGE_MARGIN;
+            top = Sphere.TOP_MARGIN;
+            rig = Sphere.STAGE_MARGIN;
+            bot = Sphere.BOTTOM_MARGIN;
+            this.center();
+        }
 
     }
 
@@ -637,6 +645,10 @@ public class StageBehaviour : BaseBehaviour
 
         // スクロール中かどうかを表すフラグを初期化。
         scrolling = true;
+
+        //Sphere.gamestate.is_stop = true;
+        act_start = true;
+
     }
 
     //
@@ -649,6 +661,9 @@ public class StageBehaviour : BaseBehaviour
 
         moveX = unitinfo.X;
         moveY = unitinfo.Y;
+
+        //Sphere.gamestate.is_stop = true;
+        act_start = true;
 
         if (moveX >= 0)
             this.moveCsr();

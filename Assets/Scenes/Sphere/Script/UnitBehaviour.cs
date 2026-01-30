@@ -64,6 +64,9 @@ public class UnitBehaviour : MonoBehaviour
 
     public const int PLAYER_ID = 1;
 
+    public Tween currentMoveTween { get; set; } = null;
+    private bool wasStopped = false;
+
     public void Init(jsonUnit _unitinfo)
     {
         Sphere = SphereBehaviour.Instance;
@@ -108,11 +111,65 @@ public class UnitBehaviour : MonoBehaviour
         StartCoroutine(this.walk());
     }
 
+    private void FixedUpdate()
+    {
+        try {
+            if (Sphere.gamestate.is_gamestart && !Sphere.gamestate.is_gameover)
+            {
+                // 物理演算で移動した位置を unitinfo に反映
+                // DOTween で移動中でない場合のみ補正
+                if (currentMoveTween == null || !currentMoveTween.IsActive())
+                {
+                    // transform.localPosition から unitinfo.X, unitinfo.Y を逆算
+                    Vector3 currentPos = transform.localPosition;
+                    float expectedX = unitinfo.X * Sphere.TIP_SIZE + margin;
+                    float expectedY = (unitinfo.Y * Sphere.TIP_SIZE + margin) * -1;
+
+                    // 物理演算で移動した分を計算（閾値は TIP_SIZE の 10% 以上）
+                    float threshold = Sphere.TIP_SIZE * 0.1f;
+                    float diffX = currentPos.x - expectedX;
+                    float diffY = currentPos.y - expectedY;
+
+                    if (Mathf.Abs(diffX) > threshold || Mathf.Abs(diffY) > threshold)
+                    {
+                        // 物理演算で移動した分を unitinfo に反映
+                        unitinfo.X = (currentPos.x - margin) / Sphere.TIP_SIZE;
+                        unitinfo.Y = ((currentPos.y * -1) - margin) / Sphere.TIP_SIZE;
+
+                        // 0.5刻みにスナップ（moverate=0.5 前提）
+                        unitinfo.X = Mathf.Round(unitinfo.X * 2f) / 2f;
+                        unitinfo.Y = Mathf.Round(unitinfo.Y * 2f) / 2f;
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            return;
+        }
+    }
+
     private void Update()
     {
         try
         {
-            if (commandkeyrecv && !Sphere.gamestate.is_gameover && !Sphere.gamestate.is_stop)
+
+            // DOTween の一時停止/再開を制御
+            if (currentMoveTween != null && currentMoveTween.IsActive())
+            {
+                if (Sphere.gamestate.is_stop && !wasStopped)
+                {
+                    currentMoveTween.Pause();
+                    wasStopped = true;
+                }
+                else if (!Sphere.gamestate.is_stop && wasStopped)
+                {
+                    currentMoveTween.Play();
+                    wasStopped = false;
+                }
+            }
+
+            if (commandkeyrecv && !Sphere.gamestate.is_gameover && !Sphere.gamestate.is_stop && !Stage.act_start)
             {
                 /*
                  manual - プレイヤー操作
@@ -131,7 +188,7 @@ public class UnitBehaviour : MonoBehaviour
 
                     if (Input.GetKey(KeyCode.UpArrow))
                     {
-                        Stage.act_start = false;
+                        //Stage.act_start = false;
                         attack_flg = true;
                         cost = Mathf.Max(Stage.cost["cost" + Mathf.Floor(unitinfo.X) + "_" + (Mathf.Ceil(unitinfo.Y) - 1)], Stage.cost["cost" + Mathf.Ceil(unitinfo.X) + "_" + (Mathf.Ceil(unitinfo.Y) - 1)]);
                         this.setAlign(3);
@@ -151,7 +208,7 @@ public class UnitBehaviour : MonoBehaviour
                     }
                     else if (Input.GetKey(KeyCode.DownArrow))
                     {
-                        Stage.act_start = false;
+                        //Stage.act_start = false;
                         attack_flg = true;
                         cost = Mathf.Max(Stage.cost["cost" + Mathf.Floor(unitinfo.X) + "_" + (Mathf.Floor(unitinfo.Y) + 1)], Stage.cost["cost" + Mathf.Ceil(unitinfo.X) + "_" + (Mathf.Floor(unitinfo.Y) + 1)]);
                         this.setAlign(0);
@@ -170,7 +227,7 @@ public class UnitBehaviour : MonoBehaviour
                     }
                     else if (Input.GetKey(KeyCode.LeftArrow))
                     {
-                        Stage.act_start = false;
+                        //Stage.act_start = false;
                         attack_flg = true;
                         cost = Stage.cost["cost" + (Mathf.Ceil(unitinfo.X) - 1) + "_" + Mathf.Ceil(unitinfo.Y)];
                         this.setAlign(1);
@@ -190,7 +247,7 @@ public class UnitBehaviour : MonoBehaviour
                     }
                     else if (Input.GetKey(KeyCode.RightArrow))
                     {
-                        Stage.act_start = false;
+                        //Stage.act_start = false;
                         attack_flg = true;
                         cost = Stage.cost["cost" + (Mathf.Floor(unitinfo.X) + 1) + "_" + Mathf.Ceil(unitinfo.Y)];
                         this.setAlign(2);
@@ -368,15 +425,13 @@ public class UnitBehaviour : MonoBehaviour
                 if (unitinfo.code == "avatar")
                 {
                     Sphere.gamestate.is_gameover = true;
+                    Sphere.gamestate.is_stop = true;
                     commandkeyrecv = false;
                     Stage.act_start = true;
 
                     UnitEvent(unitinfo.no, "dam", damage);
-                    StartCoroutine(setEffects("dam"));
-                    yield return StartCoroutine(wait_effec());
-
-                    StartCoroutine(setEffects("collap"));
-                    yield return StartCoroutine(wait_effec());
+                    yield return StartCoroutine(setEffects("dam"));
+                    yield return StartCoroutine(setEffects("collap"));
 
                     UnitRemove();
 
@@ -384,20 +439,19 @@ public class UnitBehaviour : MonoBehaviour
                 }
                 else
                 {
-                    //Sphere.DeadEnemy(unitinfo.no, damage);
+                    if (currentMoveTween != null && currentMoveTween.IsActive())
+                    {
+                        currentMoveTween.Pause();
+                    }
 
                     UnitEvent(unitinfo.no, "dam", damage);
-                    StartCoroutine(setEffects("dam"));
-                    yield return StartCoroutine(wait_effec());
-
-                    StartCoroutine(setEffects("collap"));
-                    yield return StartCoroutine(wait_effec());
+                    yield return StartCoroutine(setEffects("dam"));
+                    yield return StartCoroutine(setEffects("collap"));
                     UnitRemove();
                 }
             }
             else
             {
-                //Sphere.Damage(unitinfo.no, damage);
                 UnitEvent(unitinfo.no, "dam",damage);
                 StartCoroutine(setEffects("dam"));
             }
@@ -480,16 +534,37 @@ public class UnitBehaviour : MonoBehaviour
 
         if (move)
         {
-            commandkeyrecv = false; 
-            var tween = transform.DOLocalMove(vector, movetime).SetEase(Ease.Linear);            
-            tween.OnComplete(() => { 
-                if(!death)
-                    commandkeyrecv = true; 
+            commandkeyrecv = false;
+            wasStopped = false;
+
+            // 既存の tween があれば破棄
+            if (currentMoveTween != null && currentMoveTween.IsActive())
+            {
+                currentMoveTween.Kill();
+            }
+
+            currentMoveTween = transform.DOLocalMove(vector, movetime).SetEase(Ease.Linear);
+            currentMoveTween.OnComplete(() =>
+            {
+                if (!death)
+                {
+                    commandkeyrecv = true;
+                }
+
+                currentMoveTween = null;
+                wasStopped = false;
             });
         }
         else
         {
             transform.localPosition = vector;
+        }
+
+        if(unitinfo.code == "avatar")
+        {
+            Stage.moveX = unitinfo.X;
+            Stage.moveY = unitinfo.Y;
+            Stage.moveCsr(false);
         }
 
     }
@@ -555,9 +630,30 @@ public class UnitBehaviour : MonoBehaviour
         int hashAnim = Animator.StringToHash(_effectName);
         Anim.Play(hashAnim, 0, 0f);
 
+        // アニメーションが実際に開始されるまで1フレーム待つ
+        yield return null;
+
+        // アニメーションが開始されたことを確認
         yield return new WaitUntil(() =>
-            Anim.GetCurrentAnimatorStateInfo(0).normalizedTime >= 1f
-            || isCancelled);
+        {
+            var stateInfo = Anim.GetCurrentAnimatorStateInfo(0);
+            return stateInfo.IsName(_effectName) || isCancelled;
+        });
+
+        if (isCancelled)
+        {
+            Debug.Log("アニメーションがキャンセルされました");
+            walk_stop = false;
+            Anim.SetBool(_effectName, false);
+            yield break;
+        }
+
+        // アニメーション完了を待つ
+        yield return new WaitUntil(() =>
+        {
+            var stateInfo = Anim.GetCurrentAnimatorStateInfo(0);
+            return stateInfo.normalizedTime >= 1f || isCancelled;
+        });
 
         if (isCancelled)
         {

@@ -90,12 +90,15 @@ public class Title : BaseBehaviour
                     CharacterInfoModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
                     // item_master マスタを型付きで展開
                     ItemMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    // text_master マスタを型付きで展開
+                    TextMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
                     Debug.Log("MasterData loaded. tables=" +
                               (APIConnectManager.Instance.masterData.masters != null
                                   ? APIConnectManager.Instance.masterData.masters.Count
                                   : 0) +
                               ", character_info rows=" + CharacterInfoModel.Rows.Count +
-                              ", item_master rows=" + ItemMasterModel.Rows.Count);
+                              ", item_master rows=" + ItemMasterModel.Rows.Count +
+                              ", text_master rows=" + TextMasterModel.Rows.Count);
                 }
             }
             catch (Exception e)

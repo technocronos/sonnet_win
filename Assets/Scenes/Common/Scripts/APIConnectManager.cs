@@ -1900,6 +1900,7 @@ public class jsonUnit
     public float Y;
     public string code;
     public string act_brain;
+    public int player_owner;
     public UnitInfo Info = new UnitInfo();
     public UnitStatus Status = new UnitStatus();
     public List<int> Item = new List<int>();

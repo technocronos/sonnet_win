@@ -318,17 +318,82 @@ public class SphereBehaviour : BaseBehaviour
 
     }
 
+    bool firegimmickflg = false;
+
+    // 前フレームの各ユニットの位置を記録（ユニット番号 -> 位置）
+    Dictionary<int, jsonUnit> lastUnitPositions = new Dictionary<int, jsonUnit>();
+    
     void Update()
     {
-        if (gamestate.is_gamestart && gamestate.is_gameover == false)
+        if (gamestate.is_gamestart && gamestate.is_gameover == false && !firegimmickflg)
         {
-            // プレイヤーユニットを取得
-            jsonUnit playerUnit = getUnitByCode("avatar");
-            if (playerUnit != null)
+            // 列挙中にコレクションが変更されないように、キーのコピーを作成
+            var unitKeys = new List<int>(sphere.unit.Keys);
+            
+            // すべてのユニットをチェック
+            foreach (int unit_no in unitKeys)
             {
-                // プレイヤーが移動したかどうかを判定（簡易版）
-                // 実際には前フレームの位置と比較する必要がある
-                CheckGimmickByUnit(playerUnit, false);
+                if (!sphere.unit.ContainsKey(unit_no))
+                    continue;
+                    
+                jsonUnit unit = sphere.unit[unit_no];
+                if (unit == null || unit.X == -1) // X=-1は削除されたユニット
+                    continue;
+
+                // ユニットが移動したかどうかを判定
+                bool hasMoved = false;
+                
+                if (lastUnitPositions.ContainsKey(unit_no))
+                {
+                    // 前フレームの位置と比較（0.5刻みのスナップを考慮して比較）
+                    jsonUnit lastUnit = lastUnitPositions[unit_no];
+                    float currentX = Mathf.Round(unit.X * 2f) / 2f;
+                    float currentY = Mathf.Round(unit.Y * 2f) / 2f;
+                    float lastX = Mathf.Round(lastUnit.X * 2f) / 2f;
+                    float lastY = Mathf.Round(lastUnit.Y * 2f) / 2f;
+                    
+                    if (Mathf.Abs(currentX - lastX) > 0.1f || Mathf.Abs(currentY - lastY) > 0.1f)
+                    {
+                        hasMoved = true;
+                    }
+                }
+                else
+                {
+                    // 初回はユニットを記録するだけ（移動したとみなさない）
+                    hasMoved = false;
+                }
+                
+                // 移動した場合のみギミックをチェック
+                if (hasMoved)
+                {
+                    //過去のユニットがギミックを発動したかチェック
+                    bool is_fire = CheckGimmickByUnit(lastUnitPositions[unit_no], false, true);
+                    if (!is_fire)
+                    {
+                        // ギミックをチェック
+                        CheckGimmickByUnit(unit, false);
+                    }
+                }
+                
+                // 位置を更新（jsonUnitのコピーを作成して保存）
+                // 参照ではなく値のコピーを作成する必要がある
+                string json = JsonUtility.ToJson(unit);
+                jsonUnit unitCopy = JsonUtility.FromJson<jsonUnit>(json);
+                lastUnitPositions[unit_no] = unitCopy;
+            }
+
+            // 削除されたユニットの位置情報をクリーンアップ
+            var keysToRemove = new List<int>();
+            foreach (var key in lastUnitPositions.Keys)
+            {
+                if (!sphere.unit.ContainsKey(key) || sphere.unit[key] == null || sphere.unit[key].X == -1)
+                {
+                    keysToRemove.Add(key);
+                }
+            }
+            foreach (var key in keysToRemove)
+            {
+                lastUnitPositions.Remove(key);
             }
         }
     }
@@ -449,6 +514,8 @@ public class SphereBehaviour : BaseBehaviour
 
     public void LeadCall(List<string> command)
     {
+        mitter.lead.Clear();
+
         int i = 1;
         foreach(string com in command)
         {
@@ -813,6 +880,8 @@ public class SphereBehaviour : BaseBehaviour
             //フローの初回だけ処理
             if (leader.flowCsr == 1)
             {
+                gamestate.is_stop = true;
+
                 if (leader.flowCsr >= leader.flow.Count && leader.transUrl != "")
                 {
                     //コマンド最初が他画面遷移の場合、画面表示＋サウンド発声しない
@@ -854,7 +923,10 @@ public class SphereBehaviour : BaseBehaviour
                     this.reopen();
                 }
 
+                gamestate.is_stop = false;
+
                 //ApDispPanel.gameObject.SetActive(true);
+                firegimmickflg = false;
 
                 // このムービーはstopする。
                 yield break;
@@ -1037,9 +1109,16 @@ public class SphereBehaviour : BaseBehaviour
                     sphere.unit[unitNo] = u;
                 }
 
-                foreach (string item_id in command.Substring(10).Split(new char[] { ' ' }))
+                // コマンドが10文字以上の場合のみアイテム情報を処理
+                if (command.Length > 10)
                 {
-                    sphere.unit[unitNo].Item.Add(int.Parse(item_id));
+                    foreach (string item_id in command.Substring(10).Split(new char[] { ' ' }))
+                    {
+                        if (!string.IsNullOrEmpty(item_id) && int.TryParse(item_id, out int id) && id > 0)
+                        {
+                            sphere.unit[unitNo].Item.Add(id);
+                        }
+                    }
                 }
                 break;
 
@@ -1055,9 +1134,16 @@ public class SphereBehaviour : BaseBehaviour
                     sphere.unit[unitNo] = u;
                 }
 
-                foreach(string eqp_id in command.Substring(10).Split(new char[] { ' ' }))
+                // コマンドが10文字以上の場合のみ装備情報を処理
+                if (command.Length > 10)
                 {
-                    sphere.unit[unitNo].Eqp.Add(int.Parse(eqp_id) );
+                    foreach(string eqp_id in command.Substring(10).Split(new char[] { ' ' }))
+                    {
+                        if (!string.IsNullOrEmpty(eqp_id) && int.TryParse(eqp_id, out int id) && id > 0)
+                        {
+                            sphere.unit[unitNo].Eqp.Add(id);
+                        }
+                    }
                 }
                 break;
 
@@ -1396,6 +1482,7 @@ public class SphereBehaviour : BaseBehaviour
         Debug.Log("WAIT run...");
 
         wait_flg = true;
+        Stage.act_start = true;
 
         TouchPanel.gameObject.SetActive(true);
         TouchPanel.GetComponent<Button>().onClick.AddListener((() =>
@@ -1406,6 +1493,8 @@ public class SphereBehaviour : BaseBehaviour
             TouchPanel.gameObject.SetActive(false);
 
             wait_flg = false;
+            Stage.act_start = false;
+
         }));
 
         DispatchEvent(CwEvent.SCENE_READY);
@@ -1489,6 +1578,7 @@ public class SphereBehaviour : BaseBehaviour
                     jsonunitlist.Y = jsonunitlistlocal.Y;
                     jsonunitlist.code = jsonunitlistlocal.code;
                     jsonunitlist.act_brain = jsonunitlistlocal.act_brain;
+                    jsonunitlist.player_owner = jsonunitlistlocal.player_owner;
                     jsonunitlist.Info.graphNo = int.Parse(jsonunitlistlocal.Info.Split(new char[] { ' ' })[0]);
                     jsonunitlist.Info.union = int.Parse(jsonunitlistlocal.Info.Split(new char[] { ' ' })[1]);
                     jsonunitlist.Info.cost = int.Parse(jsonunitlistlocal.Info.Split(new char[] { ' ' })[2]);
@@ -1575,6 +1665,7 @@ public class SphereBehaviour : BaseBehaviour
         public float Y;
         public string code;
         public string act_brain;
+        public int player_owner;
         public string Info;
         public string Status;
         public string Item;
@@ -2158,17 +2249,11 @@ public class SphereBehaviour : BaseBehaviour
         gimmicks.Remove(name);
     }
 
-    /// <summary>
-    /// 引数で指定されたギミックをただちに起動する（サーバ側のtriggerGimmickに相当）
-    /// </summary>
-    /// <param name="name">ギミック名</param>
-    /// <param name="unit">ギミックを発動させたユニットのインスタンス。ユニットによらないならnull</param>
-    /// <returns>SWFへのリターンが発生したかどうか</returns>
-    public bool TriggerGimmick(string name, jsonUnit unit = null)
+    public JObject CheckTriggerGimmick(string name, jsonUnit unit = null)
     {
         // 指定のギミックがもう死んでいるなら何もしない
         if (!gimmicks.ContainsKey(name))
-            return false;
+            return null;
 
         // 指定されたギミックを取得して、ギミック名を "name" キーに格納する
         JObject gimmick = gimmicks[name] as JObject;
@@ -2191,14 +2276,31 @@ public class SphereBehaviour : BaseBehaviour
         var ignition = gimmick["ignition"];
         string unitCode = unit != null ? unit.code : "";
         if (!TestCondition(ignition, gimmick, unitCode))
-            return false;
+            return null;
 
-        // 発動⇒終了
-        bool swfReturn1 = FireGimmick(gimmick, unit);
-        bool swfReturn2 = CloseGimmick(gimmick, unit);
+        return gimmick;
+    }
 
-        // リターン
-        return swfReturn1 || swfReturn2;
+    /// <summary>
+    /// 引数で指定されたギミックをただちに起動する（サーバ側のtriggerGimmickに相当）
+    /// </summary>
+    /// <param name="name">ギミック名</param>
+    /// <param name="unit">ギミックを発動させたユニットのインスタンス。ユニットによらないならnull</param>
+    /// <returns>SWFへのリターンが発生したかどうか</returns>
+    public bool TriggerGimmick(string name, jsonUnit unit = null)
+    {
+        var gimmick = CheckTriggerGimmick(name, unit);
+        if (gimmick != null)
+        {
+            // 発動⇒終了
+            bool swfReturn1 = FireGimmick(gimmick, unit);
+            bool swfReturn2 = CloseGimmick(gimmick, unit);
+
+            // リターン
+            return swfReturn1 || swfReturn2;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -2214,6 +2316,7 @@ public class SphereBehaviour : BaseBehaviour
             return false;
 
         string type = typeToken.ToString();
+        int leadIndex = 1;
 
         // 基底で処理できるなら処理する
         switch (type)
@@ -2225,16 +2328,19 @@ public class SphereBehaviour : BaseBehaviour
                 if (leadsToken != null && leadsToken.Type == JTokenType.Array)
                 {
                     var leadsArray = leadsToken as JArray;
+
                     mitter.lead.Clear();
-                    int leadIndex = 1;
+
+                    leadIndex = 1;
                     foreach (var lead in leadsArray)
                     {
                         string leadStr = ReplaceEmbedCode(lead.ToString(), unit);
                         mitter.lead["lead" + leadIndex] = leadStr;
                         leadIndex++;
                     }
-                    // Lead()を呼び出して処理
-                    Lead();
+
+                    gimmick_call_lead(unit, leadIndex);
+
                 }
 
                 // SWFへ返すかどうかは設定次第
@@ -2277,10 +2383,238 @@ public class SphereBehaviour : BaseBehaviour
 
                 return false;
 
+            // ユニットの登場
+            case "unit":
+                // ユニット定義を取得
+                var unitDefine = gimmick["unit"] as JObject;
+                if (unitDefine == null)
+                {
+                    Debug.LogError($"Gimmick type 'unit' requires 'unit' definition: {gimmick["name"]}");
+                    return false;
+                }
+
+                // character_idを取得
+                var characterIdToken = unitDefine["character_id"];
+                if (characterIdToken == null)
+                {
+                    Debug.LogError($"Gimmick type 'unit' requires 'character_id': {gimmick["name"]}");
+                    return false;
+                }
+                int characterId = characterIdToken.Value<int>();
+
+                // 座標を取得（デフォルトは[0,0]）
+                int posX = 0;
+                int posY = 0;
+                var posToken = unitDefine["pos"];
+                if (posToken != null && posToken.Type == JTokenType.Array)
+                {
+                    var posArray = posToken as JArray;
+                    if (posArray.Count >= 2)
+                    {
+                        posX = posArray[0].Value<int>();
+                        posY = posArray[1].Value<int>();
+                    }
+                }
+
+                // マスターデータからキャラクター情報を取得
+                var charInfo = CharacterInfoModel.Rows.Find(c => c.character_id == characterId);
+                if (charInfo == null)
+                {
+                    Debug.LogError($"Character info not found for character_id={characterId} in gimmick: {gimmick["name"]}");
+                    return false;
+                }
+
+                // ユニット番号を決定（既存のユニット番号の最大値+1）
+                int newUnitNo = 1;
+                if (sphere.unit != null && sphere.unit.Count > 0)
+                {
+                    foreach (var key in sphere.unit.Keys)
+                    {
+                        if (key >= newUnitNo)
+                            newUnitNo = key + 1;
+                    }
+                }
+
+                // ユニット情報を作成
+                jsonUnit newUnit = new jsonUnit();
+                newUnit.no = newUnitNo;
+                newUnit.X = posX;
+                newUnit.Y = posY;
+                // text_masterからキャラクター名を取得
+                int lang = PlayerPrefs.GetInt(Settings.LANGUAGE_SELECTED_KEY, 0);
+                newUnit.Name = TextMasterModel.GetCharacterName(charInfo.name_id, lang);
+                if (string.IsNullOrEmpty(newUnit.Name))
+                {
+                    // text_masterにない場合はentryをフォールバックとして使用
+                    newUnit.Name = charInfo.entry;
+                }
+                newUnit.code = unitDefine["code"] != null ? unitDefine["code"].ToString() : "";
+                newUnit.act_brain = unitDefine["act_brain"] != null ? unitDefine["act_brain"].ToString() : "generic";
+                newUnit.player_owner = 0;
+
+                // UnitInfoを設定
+                // iconプロパティからグラフィック番号を取得（サーバ側のgetUnitSpecs()と同じロジック）
+                string iconName = unitDefine["icon"] != null ? unitDefine["icon"].ToString() : "shadow";
+                
+                // sphere.unitIconからicon名に対応するグラフィック番号を探す
+                int graphNo = 0;
+                if (sphere.unitIcon != null)
+                {
+                    foreach (var kvp in sphere.unitIcon)
+                    {
+                        if (kvp.Value == iconName)
+                        {
+                            graphNo = kvp.Key;
+                            break;
+                        }
+                    }
+                    
+                    // 見つからない場合は、新しい番号を割り当て
+                    if (graphNo == 0)
+                    {
+                        // 既存の最大値+1を取得
+                        int maxGraphNo = 0;
+                        foreach (var key in sphere.unitIcon.Keys)
+                        {
+                            if (key > maxGraphNo)
+                                maxGraphNo = key;
+                        }
+                        graphNo = maxGraphNo + 1;
+                        sphere.unitIcon[graphNo] = iconName;
+                    }
+                }
+                else
+                {
+                    // unitIconが初期化されていない場合は1から開始
+                    graphNo = 1;
+                    if (sphere.unitIcon == null)
+                    {
+                        sphere.unitIcon = new Dictionary<int, string>();
+                    }
+                    sphere.unitIcon[graphNo] = iconName;
+                }
+                
+                newUnit.Info.graphNo = graphNo;
+                newUnit.Info.union = unitDefine["union"] != null ? unitDefine["union"].Value<int>() : 2;
+                newUnit.Info.cost = unitDefine["move_pow"] != null ? unitDefine["move_pow"].Value<int>() : 4; // デフォルトは4
+                newUnit.Info.align = 0;
+
+                // UnitStatusを設定
+                newUnit.Status.level = 1; // レベルは後で計算する必要があるが、とりあえず1
+                newUnit.Status.hp = (int)charInfo.hp;
+                newUnit.Status.maxhp = (int)charInfo.hp_max;
+                newUnit.Status.att1 = charInfo.attack1;
+                newUnit.Status.att2 = charInfo.attack2;
+                newUnit.Status.att3 = charInfo.attack3;
+                newUnit.Status.def1 = charInfo.defence1;
+                newUnit.Status.def2 = charInfo.defence2;
+                newUnit.Status.def3 = charInfo.defence3;
+                newUnit.Status.defX = charInfo.defenceX;
+                newUnit.Status.spd = charInfo.speed;
+
+                // ユニットをsphereに追加
+                sphere.unit[newUnitNo] = newUnit;
+
+                // 指揮を生成
+                mitter.lead.Clear();
+                leadIndex = 1;
+
+                // quietが指定されていない場合、フォーカスと解説を追加
+                bool quiet = gimmick["quiet"] != null && gimmick["quiet"].Value<bool>();
+                if (!quiet)
+                {
+                    mitter.lead["lead" + leadIndex] = string.Format("PFOCS {0:D2} {1:D2}", posX, posY);
+                    leadIndex++;
+                    // IPRET（解説）は後で実装
+                    mitter.lead["lead" + leadIndex] = string.Format("IPRET {0} Lv{1}が現れました", newUnit.Name, newUnit.Status.level);
+                    leadIndex++;
+                    mitter.lead["lead" + leadIndex] = "DELAY 800";
+                    leadIndex++;
+                    mitter.lead["lead" + leadIndex] = "IPRET";
+                    leadIndex++;
+                }
+
+                // USTAT指揮を生成
+                mitter.lead["lead" + leadIndex] = string.Format("USTAT {0:D3} {1:D4} {2:D5} {3:D5} {4:D4} {5:D4} {6:D4} {7:D4} {8:D4} {9:D4} {10:D4} {11:D3}",
+                    newUnitNo, newUnit.Status.level, newUnit.Status.hp, newUnit.Status.maxhp,
+                    newUnit.Status.att1, newUnit.Status.att2, newUnit.Status.att3,
+                    newUnit.Status.def1, newUnit.Status.def2, newUnit.Status.def3,
+                    newUnit.Status.spd, newUnit.Status.defX);
+                leadIndex++;
+
+                // UITEM指揮を生成
+                // unitDefineからitemsを取得（通常は空）
+                string itemSpec = "";
+                var itemsToken = unitDefine["items"];
+                if (itemsToken != null && itemsToken.Type == JTokenType.Array)
+                {
+                    var itemsArray = itemsToken as JArray;
+                    // 注意: Unity側ではuser_item_idからSWFアイテム番号への変換ができないため、
+                    // itemsが指定されている場合は空として扱う（サーバ側で処理する必要がある）
+                    // 通常、敵ユニットはitemsを持たないので、空のコマンドを送る
+                }
+                mitter.lead["lead" + leadIndex] = string.Format("UITEM {0:D3} {1}", newUnitNo, itemSpec).TrimEnd();
+                leadIndex++;
+
+                // UEQIP指揮を生成
+                // unitDefineからsequipを取得（通常は空）
+                string eqpSpec = "";
+                var sequipToken = unitDefine["sequip"];
+                if (sequipToken != null && sequipToken.Type == JTokenType.Array)
+                {
+                    var sequipArray = sequipToken as JArray;
+                    // 注意: Unity側ではuser_item_idからSWFアイテム番号への変換ができないため、
+                    // sequipが指定されている場合は空として扱う（サーバ側で処理する必要がある）
+                    // 通常、敵ユニットはsequipを持たないので、空のコマンドを送る
+                }
+                mitter.lead["lead" + leadIndex] = string.Format("UEQIP {0:D3} {1}", newUnitNo, eqpSpec).TrimEnd();
+                leadIndex++;
+
+                // UADDI指揮を生成
+                string infoStr = string.Format("{0:D2} {1:D2} {2:D3} {3:D2}",
+                    newUnit.Info.graphNo, newUnit.Info.union, newUnit.Info.cost, newUnit.Info.align);
+                mitter.lead["lead" + leadIndex] = string.Format("UADDI {0:D3} {1:D2} {2:D2} {3} {4}",
+                    newUnitNo, posX, posY, infoStr, newUnit.Name);
+                leadIndex++;
+
+                // Lead()を呼び出して処理
+                gimmick_call_lead(unit, leadIndex);
+
+                return false;
+
             // その他のタイプは未実装
             default:
                 Debug.LogWarning($"Gimmick type '{type}' not implemented: {gimmick["name"]}");
                 return false;
+        }
+    }
+
+    public void gimmick_call_lead(jsonUnit unit, int leadIndex)
+    {
+        if (unit.code == "avatar")
+            mitter.lead["lead" + leadIndex] = "COMND " + unit.no;
+
+        // 既存の tween があれば移動を最後までやりきってから発動
+        var objunit = Stage.objUnits.units["unit_" + unit.no];
+        if (objunit != null && objunit.currentMoveTween != null && objunit.currentMoveTween.IsActive())
+        {
+            objunit.currentMoveTween.OnComplete(() =>
+            {
+                objunit.commandkeyrecv = true;
+
+                firegimmickflg = true;
+                leader.flow.Clear();
+                Lead();
+
+            });
+        }
+        else
+        {
+            // Lead()を呼び出して処理
+            firegimmickflg = true;
+
+            leader.flow.Clear();
+            Lead();
         }
     }
 
@@ -2508,10 +2842,13 @@ public class SphereBehaviour : BaseBehaviour
     /// </summary>
     /// <param name="unit">進入しているかもしれないユニットのインスタンス</param>
     /// <param name="stayPos">ユニットが移動を行わず留まっているならtrue</param>
-    protected void CheckGimmickByUnit(jsonUnit unit, bool stayPos = false)
+    protected bool CheckGimmickByUnit(jsonUnit unit, bool stayPos = false, bool check = false)
     {
+
+        bool is_fire = false;
+
         if (unit == null)
-            return;
+            return false;
 
         // 対象ユニットがいる座標にあるギミックのインデックスをすべて取得
         Vector2Int unitPos = new Vector2Int((int)unit.X, (int)unit.Y);
@@ -2543,8 +2880,8 @@ public class SphereBehaviour : BaseBehaviour
                         isTarget = true;
                     break;
                 case "player":
-                    // Unity側ではplayer_ownerプロパティの判定が必要（現時点では未実装）
-                    Debug.LogWarning($"trigger 'player' not fully implemented for gimmick: {name}");
+                    if (unit.player_owner == 1)
+                        isTarget = true;
                     break;
                 case "all":
                     isTarget = true;
@@ -2574,9 +2911,20 @@ public class SphereBehaviour : BaseBehaviour
             if (!isTarget)
                 continue;
 
-            // ギミックを発動
-            TriggerGimmick(name, unit);
+            if (check)
+            {
+                if (CheckTriggerGimmick(name, unit) != null)
+                    is_fire = true;
+            }
+            else
+            {
+                // ギミックを発動
+                TriggerGimmick(name, unit);
+                is_fire = true;
+            }
         }
+
+        return is_fire;
     }
 
     /// <summary>
