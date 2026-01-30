@@ -567,27 +567,6 @@ public class SphereBehaviour : BaseBehaviour
         return "DAMAG2 " + no + " " + damage;
     }
 
-    public void Damage(int no, int damage)
-    {
-        List<string> command = new List<string>();
-
-        command.Add(COMMAND_DAMAG2(no, damage));
-        command.Add("COMND " + UnitBehaviour.PLAYER_ID);
-
-        LeadCall(command);
-    }
-
-    public void DeadEnemy(int no, int damage)
-    {
-        List<string> command = new List<string>();
-
-        command.Add(COMMAND_DAMAG2(no, damage));
-        command.Add(COMMAND_UEXIT2(no));
-        command.Add("COMND " + UnitBehaviour.PLAYER_ID);
-
-        LeadCall(command);
-    }
-
     public void GameOver(int no, int damage)
     {
         //Time.timeScale = 0.0f;
@@ -2286,14 +2265,21 @@ public class SphereBehaviour : BaseBehaviour
     /// </summary>
     /// <param name="name">ギミック名</param>
     /// <param name="unit">ギミックを発動させたユニットのインスタンス。ユニットによらないならnull</param>
+    /// <param name="isChained">chainで呼ばれた場合はtrue（mitter.leadをクリアしない）</param>
     /// <returns>SWFへのリターンが発生したかどうか</returns>
-    public bool TriggerGimmick(string name, jsonUnit unit = null)
+    public bool TriggerGimmick(string name, jsonUnit unit = null, bool isChained = false)
     {
         var gimmick = CheckTriggerGimmick(name, unit);
         if (gimmick != null)
         {
+            // chainで呼ばれていない場合（最初のギミック発動時）のみmitter.leadをクリア
+            if (!isChained)
+            {
+                mitter.lead.Clear();
+            }
+
             // 発動⇒終了
-            bool swfReturn1 = FireGimmick(gimmick, unit);
+            bool swfReturn1 = FireGimmick(gimmick, unit, isChained);
             bool swfReturn2 = CloseGimmick(gimmick, unit);
 
             // リターン
@@ -2308,15 +2294,17 @@ public class SphereBehaviour : BaseBehaviour
     /// </summary>
     /// <param name="gimmick">ギミック。"name" キーにギミック名が格納されている</param>
     /// <param name="unit">ギミックを発動させたユニットのインスタンス。ユニットによらないならnull</param>
+    /// <param name="isChained">chainで呼ばれた場合はtrue（mitter.leadをクリアしない）</param>
     /// <returns>SWFへのリターンが発生したかどうか</returns>
-    protected bool FireGimmick(JObject gimmick, jsonUnit unit)
+    protected bool FireGimmick(JObject gimmick, jsonUnit unit, bool isChained = false)
     {
         var typeToken = gimmick["type"];
         if (typeToken == null)
             return false;
 
         string type = typeToken.ToString();
-        int leadIndex = 1;
+        // leadIndexは既存のmitter.leadの数+1から開始（サーバ側のarray_mergeと同じ）
+        int leadIndex = mitter.lead.Count + 1;
 
         // 基底で処理できるなら処理する
         switch (type)
@@ -2329,9 +2317,7 @@ public class SphereBehaviour : BaseBehaviour
                 {
                     var leadsArray = leadsToken as JArray;
 
-                    mitter.lead.Clear();
-
-                    leadIndex = 1;
+                    // chainで呼ばれた場合は既存のmitter.leadに追加（サーバ側のarray_mergeと同じ）
                     foreach (var lead in leadsArray)
                     {
                         string leadStr = ReplaceEmbedCode(lead.ToString(), unit);
@@ -2339,7 +2325,12 @@ public class SphereBehaviour : BaseBehaviour
                         leadIndex++;
                     }
 
-                    gimmick_call_lead(unit, leadIndex);
+                    // chainで呼ばれていない場合のみLead()を呼び出す
+                    // chainで呼ばれた場合は、最後のギミック発動後にまとめてLead()が呼ばれる
+                    if (!isChained)
+                    {
+                        gimmick_call_lead(unit, leadIndex);
+                    }
 
                 }
 
@@ -2379,6 +2370,61 @@ public class SphereBehaviour : BaseBehaviour
                     int gold = gimmick["gold"].Value<int>();
                     // ゴールド取得処理（Unity側の実装に応じて変更が必要）
                     Debug.LogWarning($"treasure gold={gold} not fully implemented");
+                }
+
+                return false;
+
+            // マップチップの変更
+            case "square_change":
+                // change_posとchange_tipを取得
+                var changePosToken = gimmick["change_pos"];
+                var changeTipToken = gimmick["change_tip"];
+                if (changePosToken == null || changeTipToken == null)
+                {
+                    Debug.LogError($"Gimmick type 'square_change' requires 'change_pos' and 'change_tip': {gimmick["name"]}");
+                    return false;
+                }
+
+                var changePosArray = changePosToken as JArray;
+                if (changePosArray == null || changePosArray.Count < 2)
+                {
+                    Debug.LogError($"Gimmick type 'square_change' requires 'change_pos' as array[2]: {gimmick["name"]}");
+                    return false;
+                }
+
+                int changeX = changePosArray[0].Value<int>();
+                int changeY = changePosArray[1].Value<int>();
+                int changeTipId = changeTipToken.Value<int>();
+
+                // change_tip（グラフィック番号）から内部チップ番号を取得
+                // tipIdは Dictionary<int, string> で、キーが内部チップ番号、値がグラフィック番号
+                int internalTipNo = 0;
+                if (sphere.tipId != null)
+                {
+                    foreach (var kvp in sphere.tipId)
+                    {
+                        if (kvp.Value == changeTipId.ToString())
+                        {
+                            internalTipNo = kvp.Key;
+                            break;
+                        }
+                    }
+                }
+
+                if (internalTipNo == 0)
+                {
+                    Debug.LogError($"Gimmick type 'square_change': tipId {changeTipId} not found in tipId table: {gimmick["name"]}");
+                    return false;
+                }
+
+                // RPBG1コマンドを生成（サーバ側のchangeSquare()と同じ）
+                mitter.lead["lead" + leadIndex] = string.Format("RPBG1 {0:D2} {1:D2} {2:D4}", changeX, changeY, internalTipNo);
+                leadIndex++;
+
+                // chainで呼ばれていない場合のみLead()を呼び出す
+                if (!isChained)
+                {
+                    gimmick_call_lead(unit, leadIndex);
                 }
 
                 return false;
@@ -2515,9 +2561,7 @@ public class SphereBehaviour : BaseBehaviour
                 // ユニットをsphereに追加
                 sphere.unit[newUnitNo] = newUnit;
 
-                // 指揮を生成
-                mitter.lead.Clear();
-                leadIndex = 1;
+                // 指揮を生成（既存のmitter.leadに追加）
 
                 // quietが指定されていない場合、フォーカスと解説を追加
                 bool quiet = gimmick["quiet"] != null && gimmick["quiet"].Value<bool>();
@@ -2577,8 +2621,11 @@ public class SphereBehaviour : BaseBehaviour
                     newUnitNo, posX, posY, infoStr, newUnit.Name);
                 leadIndex++;
 
-                // Lead()を呼び出して処理
-                gimmick_call_lead(unit, leadIndex);
+                // chainで呼ばれていない場合のみLead()を呼び出す
+                if (!isChained)
+                {
+                    gimmick_call_lead(unit, leadIndex);
+                }
 
                 return false;
 
@@ -2729,12 +2776,20 @@ public class SphereBehaviour : BaseBehaviour
         // ギミックにchainが設定されている場合は起動する
         if (gimmick["chain"] != null)
         {
-            var chainArray = gimmick["chain"] as JArray;
-            if (chainArray != null)
+            var chainToken = gimmick["chain"];
+            // サーバ側では (array)$gimmick['chain'] でキャストしているので、文字列でも配列でも対応
+            if (chainToken.Type == JTokenType.String)
             {
+                // 文字列の場合はそのまま発動（chainで呼ばれているのでisChained=true）
+                swfReturn = swfReturn || TriggerGimmick(chainToken.ToString(), unit, true);
+            }
+            else if (chainToken.Type == JTokenType.Array)
+            {
+                // 配列の場合は各要素を発動（chainで呼ばれているのでisChained=true）
+                var chainArray = chainToken as JArray;
                 foreach (var chain in chainArray)
                 {
-                    swfReturn = swfReturn || TriggerGimmick(chain.ToString(), unit);
+                    swfReturn = swfReturn || TriggerGimmick(chain.ToString(), unit, true);
                 }
             }
         }

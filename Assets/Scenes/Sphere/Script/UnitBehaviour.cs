@@ -62,8 +62,6 @@ public class UnitBehaviour : MonoBehaviour
     private int no = -1;
     private jsonUnit unitinfo = new jsonUnit();
 
-    public const int PLAYER_ID = 1;
-
     public Tween currentMoveTween { get; set; } = null;
     private bool wasStopped = false;
 
@@ -98,6 +96,7 @@ public class UnitBehaviour : MonoBehaviour
             EXP.show(0, Header.Instance.GetSummary().exp.relative_exp, Header.Instance.GetSummary().exp.relative_next, unitinfo.Status.level);
             movetime = 0.2f;
 
+            attack_flg = true;
             StartCoroutine(SlashAttack());
         }
         else
@@ -188,8 +187,6 @@ public class UnitBehaviour : MonoBehaviour
 
                     if (Input.GetKey(KeyCode.UpArrow))
                     {
-                        //Stage.act_start = false;
-                        attack_flg = true;
                         cost = Mathf.Max(Stage.cost["cost" + Mathf.Floor(unitinfo.X) + "_" + (Mathf.Ceil(unitinfo.Y) - 1)], Stage.cost["cost" + Mathf.Ceil(unitinfo.X) + "_" + (Mathf.Ceil(unitinfo.Y) - 1)]);
                         this.setAlign(3);
 
@@ -208,8 +205,6 @@ public class UnitBehaviour : MonoBehaviour
                     }
                     else if (Input.GetKey(KeyCode.DownArrow))
                     {
-                        //Stage.act_start = false;
-                        attack_flg = true;
                         cost = Mathf.Max(Stage.cost["cost" + Mathf.Floor(unitinfo.X) + "_" + (Mathf.Floor(unitinfo.Y) + 1)], Stage.cost["cost" + Mathf.Ceil(unitinfo.X) + "_" + (Mathf.Floor(unitinfo.Y) + 1)]);
                         this.setAlign(0);
 
@@ -227,8 +222,6 @@ public class UnitBehaviour : MonoBehaviour
                     }
                     else if (Input.GetKey(KeyCode.LeftArrow))
                     {
-                        //Stage.act_start = false;
-                        attack_flg = true;
                         cost = Stage.cost["cost" + (Mathf.Ceil(unitinfo.X) - 1) + "_" + Mathf.Ceil(unitinfo.Y)];
                         this.setAlign(1);
 
@@ -247,8 +240,6 @@ public class UnitBehaviour : MonoBehaviour
                     }
                     else if (Input.GetKey(KeyCode.RightArrow))
                     {
-                        //Stage.act_start = false;
-                        attack_flg = true;
                         cost = Stage.cost["cost" + (Mathf.Floor(unitinfo.X) + 1) + "_" + Mathf.Ceil(unitinfo.Y)];
                         this.setAlign(2);
 
@@ -385,7 +376,7 @@ public class UnitBehaviour : MonoBehaviour
             {
                 if (unitinfo.code != "avatar")
                 {
-                    jsonUnit colunitinfo = Sphere.sphere.unit[PLAYER_ID];
+                    jsonUnit colunitinfo = Sphere.getUnitByCode("avatar");
 
                     StartCoroutine(CalcDamage(colunitinfo));
                 }
@@ -573,7 +564,7 @@ public class UnitBehaviour : MonoBehaviour
     {
         while (true)
         {
-            if (attack_flg && !walk_stop && !Sphere.gamestate.is_stop)
+            if (attack_flg && !Sphere.gamestate.is_stop && Sphere.gamestate.is_gamestart)
             {
                 weapon_slash.SetActive(true);
 
