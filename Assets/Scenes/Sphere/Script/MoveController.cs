@@ -64,7 +64,7 @@ class MoveController
         }
     }
 
-    void BtnExitClick()
+    public void BtnExitClick()
     {
         if (User.phaseDepth != 4)
         {
