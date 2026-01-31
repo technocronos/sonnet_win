@@ -89,10 +89,10 @@ public class UnitBehaviour : MonoBehaviour
         }
 
         weapon_slash.SetActive(false);
+        HP.show(no);
 
         if (unitinfo.code == "avatar")
         {
-            HP.show(no);
             EXP.show(0, Header.Instance.GetSummary().exp.relative_exp, Header.Instance.GetSummary().exp.relative_next, unitinfo.Status.level);
             movetime = 0.2f;
 
@@ -102,7 +102,6 @@ public class UnitBehaviour : MonoBehaviour
         else
         {
             movetime = 0.4f * 2;
-
             unitinfo.Info.cost = 20;//一旦書き換え
         }
 
@@ -132,12 +131,66 @@ public class UnitBehaviour : MonoBehaviour
                     if (Mathf.Abs(diffX) > threshold || Mathf.Abs(diffY) > threshold)
                     {
                         // 物理演算で移動した分を unitinfo に反映
-                        unitinfo.X = (currentPos.x - margin) / Sphere.TIP_SIZE;
-                        unitinfo.Y = ((currentPos.y * -1) - margin) / Sphere.TIP_SIZE;
+                        float newX = (currentPos.x - margin) / Sphere.TIP_SIZE;
+                        float newY = ((currentPos.y * -1) - margin) / Sphere.TIP_SIZE;
 
                         // 0.5刻みにスナップ（moverate=0.5 前提）
-                        unitinfo.X = Mathf.Round(unitinfo.X * 2f) / 2f;
-                        unitinfo.Y = Mathf.Round(unitinfo.Y * 2f) / 2f;
+                        newX = Mathf.Round(newX * 2f) / 2f;
+                        newY = Mathf.Round(newY * 2f) / 2f;
+
+                        // コスト9999のマップチップに入っていないかチェック
+                        int costX1 = GetCost(Mathf.FloorToInt(newX), Mathf.CeilToInt(newY));
+                        int costX2 = GetCost(Mathf.CeilToInt(newX), Mathf.CeilToInt(newY));
+                        int costY1 = GetCost(Mathf.CeilToInt(newX), Mathf.FloorToInt(newY));
+                        int costY2 = GetCost(Mathf.CeilToInt(newX), Mathf.CeilToInt(newY));
+                        int maxCost = Mathf.Max(costX1, costX2, costY1, costY2);
+
+                        // コスト9999のマップチップに入っている場合は、前の位置に戻すか、最も近い通れるマップチップに移動
+                        if (maxCost >= 9990)
+                        {
+                            // 前の位置（expectedX, expectedYから計算）に戻す
+                            float safeX = (expectedX - margin) / Sphere.TIP_SIZE;
+                            float safeY = ((expectedY * -1) - margin) / Sphere.TIP_SIZE;
+                            safeX = Mathf.Round(safeX * 2f) / 2f;
+                            safeY = Mathf.Round(safeY * 2f) / 2f;
+
+                            // 前の位置もコスト9999の場合は、最も近い通れるマップチップを探す
+                            int safeCostX1 = GetCost(Mathf.FloorToInt(safeX), Mathf.CeilToInt(safeY));
+                            int safeCostX2 = GetCost(Mathf.CeilToInt(safeX), Mathf.CeilToInt(safeY));
+                            int safeCostY1 = GetCost(Mathf.CeilToInt(safeX), Mathf.FloorToInt(safeY));
+                            int safeCostY2 = GetCost(Mathf.CeilToInt(safeX), Mathf.CeilToInt(safeY));
+                            int safeMaxCost = Mathf.Max(safeCostX1, safeCostX2, safeCostY1, safeCostY2);
+
+                            if (safeMaxCost >= 9990)
+                            {
+                                // 最も近い通れるマップチップを探す
+                                float[] nearestWalkable = FindNearestWalkableTile(newX, newY);
+                                if (nearestWalkable != null)
+                                {
+                                    newX = nearestWalkable[0];
+                                    newY = nearestWalkable[1];
+                                }
+                                else
+                                {
+                                    // 見つからない場合は前の位置を維持
+                                    return;
+                                }
+                            }
+                            else
+                            {
+                                // 前の位置が安全な場合は前の位置に戻す
+                                newX = safeX;
+                                newY = safeY;
+                            }
+
+                            // 物理位置も補正
+                            Vector3 safePos = new Vector3(newX * Sphere.TIP_SIZE + margin, (newY * Sphere.TIP_SIZE + margin) * -1, 0);
+                            transform.localPosition = safePos;
+                        }
+
+                        // 安全な位置を unitinfo に反映
+                        unitinfo.X = newX;
+                        unitinfo.Y = newY;
                     }
                 }
             }
@@ -408,8 +461,7 @@ public class UnitBehaviour : MonoBehaviour
 
             unitinfo.Status.hp -= damage;
 
-            if (unitinfo.code == "avatar") 
-                HP.show(unitinfo.no);
+            HP.show(unitinfo.no);
 
             if (death)
             {
@@ -614,6 +666,7 @@ public class UnitBehaviour : MonoBehaviour
                 AudioManager.Instance.PlaySE("se_hit");
                 break;
             case "collap":
+                HP.hide();
                 AudioManager.Instance.PlaySE("se_explosionshort");
                 break;
         }
@@ -1218,6 +1271,77 @@ public class UnitBehaviour : MonoBehaviour
         if (Stage.cost.ContainsKey(costKey))
             return (int)Stage.cost[costKey];
         return 9999; // 到達不能
+    }
+
+    /// <summary>
+    /// 指定された位置から最も近い通れるマップチップ（コスト9999未満）を見つける
+    /// </summary>
+    private float[] FindNearestWalkableTile(float x, float y)
+    {
+        int centerX = Mathf.RoundToInt(x);
+        int centerY = Mathf.RoundToInt(y);
+        
+        // 周囲のマップチップをチェック（最大10マスまで拡大）
+        for (int radius = 1; radius <= 10; radius++)
+        {
+            List<float[]> candidates = new List<float[]>();
+            
+            // 半径内のすべてのマップチップをチェック
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                for (int dy = -radius; dy <= radius; dy++)
+                {
+                    // 半径内のマップチップのみ（円形ではなく矩形でチェック）
+                    if (Mathf.Abs(dx) == radius || Mathf.Abs(dy) == radius)
+                    {
+                        int checkX = centerX + dx;
+                        int checkY = centerY + dy;
+                        
+                        // コストをチェック（4隅すべてが9999未満である必要がある）
+                        int cost1 = GetCost(checkX, checkY);
+                        int cost2 = GetCost(checkX + 1, checkY);
+                        int cost3 = GetCost(checkX, checkY + 1);
+                        int cost4 = GetCost(checkX + 1, checkY + 1);
+                        int maxCost = Mathf.Max(cost1, cost2, cost3, cost4);
+                        
+                        if (maxCost < 9990)
+                        {
+                            // ユニットがいるかチェック
+                            var unitMap = GetUnitMap();
+                            string posKey = GetPosKey(new int[] { checkX, checkY });
+                            if (!unitMap.ContainsKey(posKey))
+                            {
+                                // 距離を計算して候補に追加
+                                float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                                candidates.Add(new float[] { checkX, checkY, dist });
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 候補がある場合は、最も近いものを返す
+            if (candidates.Count > 0)
+            {
+                float[] nearest = null;
+                float minDist = float.MaxValue;
+                foreach (var candidate in candidates)
+                {
+                    if (candidate[2] < minDist)
+                    {
+                        minDist = candidate[2];
+                        nearest = candidate;
+                    }
+                }
+                if (nearest != null)
+                {
+                    return new float[] { nearest[0], nearest[1] };
+                }
+            }
+        }
+        
+        // 見つからない場合はnullを返す
+        return null;
     }
 
     /// <summary>

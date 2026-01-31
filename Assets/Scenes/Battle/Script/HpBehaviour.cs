@@ -1,4 +1,5 @@
-﻿using TMPro;
+﻿using Newtonsoft.Json.Bson;
+using TMPro;
 using UnityEditor.PackageManager;
 using UnityEngine;
 
@@ -28,5 +29,10 @@ public class HpBehaviour : MonoBehaviour
         gauge.transform.localPosition = new Vector3(posx - gauge_width, 0, 0);
 
         transform.gameObject.SetActive(true);
+    }
+
+    public void hide()
+    {
+        transform.gameObject.SetActive(false);
     }
 }

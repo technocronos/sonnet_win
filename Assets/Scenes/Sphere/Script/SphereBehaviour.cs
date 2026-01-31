@@ -2562,19 +2562,13 @@ public class SphereBehaviour : BaseBehaviour
                 sphere.unit[newUnitNo] = newUnit;
 
                 // 指揮を生成（既存のmitter.leadに追加）
+                // サーバ側の順番に合わせる: PFOCS → USTAT → UITEM → UEQIP → UADDI → IPRET → DELAY → IPRET
 
-                // quietが指定されていない場合、フォーカスと解説を追加
+                // quietが指定されていない場合、フォーカスを先に追加
                 bool quiet = gimmick["quiet"] != null && gimmick["quiet"].Value<bool>();
                 if (!quiet)
                 {
                     mitter.lead["lead" + leadIndex] = string.Format("PFOCS {0:D2} {1:D2}", posX, posY);
-                    leadIndex++;
-                    // IPRET（解説）は後で実装
-                    mitter.lead["lead" + leadIndex] = string.Format("IPRET {0} Lv{1}が現れました", newUnit.Name, newUnit.Status.level);
-                    leadIndex++;
-                    mitter.lead["lead" + leadIndex] = "DELAY 800";
-                    leadIndex++;
-                    mitter.lead["lead" + leadIndex] = "IPRET";
                     leadIndex++;
                 }
 
@@ -2620,6 +2614,17 @@ public class SphereBehaviour : BaseBehaviour
                 mitter.lead["lead" + leadIndex] = string.Format("UADDI {0:D3} {1:D2} {2:D2} {3} {4}",
                     newUnitNo, posX, posY, infoStr, newUnit.Name);
                 leadIndex++;
+
+                // quietが指定されていない場合、解説を追加（UADDIの後）
+                if (!quiet)
+                {
+                    mitter.lead["lead" + leadIndex] = string.Format("IPRET {0} Lv{1}が現れました", newUnit.Name, newUnit.Status.level);
+                    leadIndex++;
+                    mitter.lead["lead" + leadIndex] = "DELAY 800";
+                    leadIndex++;
+                    mitter.lead["lead" + leadIndex] = "IPRET";
+                    leadIndex++;
+                }
 
                 // chainで呼ばれていない場合のみLead()を呼び出す
                 if (!isChained)
