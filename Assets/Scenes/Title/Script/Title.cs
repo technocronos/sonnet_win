@@ -86,19 +86,33 @@ public class Title : BaseBehaviour
 
                 if (APIConnectManager.Instance.masterData != null)
                 {
-                    // character_info マスタを型付きで展開
+                    // すべてのマスターデータを型付きで展開
                     CharacterInfoModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
-                    // item_master マスタを型付きで展開
                     ItemMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
-                    // text_master マスタを型付きで展開
                     TextMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    ConditionMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    DramaMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    DtechMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    EquippableMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    GachaMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    GradeMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    HelpMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    ItemLevelMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    LevelMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    MonsterMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    MountMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    PlaceMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    QuestMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    RoomMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    SetMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    SquareMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    TournamentMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    UnitMasterModel.LoadFromMasterData(APIConnectManager.Instance.masterData);
+                    
                     Debug.Log("MasterData loaded. tables=" +
                               (APIConnectManager.Instance.masterData.masters != null
                                   ? APIConnectManager.Instance.masterData.masters.Count
-                                  : 0) +
-                              ", character_info rows=" + CharacterInfoModel.Rows.Count +
-                              ", item_master rows=" + ItemMasterModel.Rows.Count +
-                              ", text_master rows=" + TextMasterModel.Rows.Count);
+                                  : 0));
                 }
             }
             catch (Exception e)
