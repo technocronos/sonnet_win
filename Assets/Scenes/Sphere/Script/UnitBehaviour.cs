@@ -17,9 +17,13 @@ public class UnitBehaviour : MonoBehaviour
     [SerializeField]
     private ExpDispBehaviour EXP;
     [SerializeField]
+    private StarDispBehaviour StarDisp;
+    [SerializeField]
     private GameObject weapon_slash;
     [SerializeField]
     private Animator SlashAnim;
+    [SerializeField]
+    private ExpPiece expPref;
 
     SphereBehaviour Sphere { get; set; }
     StageBehaviour Stage { get; set; }
@@ -65,6 +69,12 @@ public class UnitBehaviour : MonoBehaviour
     public Tween currentMoveTween { get; set; } = null;
     private bool wasStopped = false;
 
+    // リベンジカウント
+    Dictionary<string, int> star = new Dictionary<string, int>();
+
+    int relative_exp = 0;
+    int relative_next = 0;
+
     public void Init(jsonUnit _unitinfo)
     {
         Sphere = SphereBehaviour.Instance;
@@ -93,7 +103,12 @@ public class UnitBehaviour : MonoBehaviour
 
         if (unitinfo.code == "avatar")
         {
-            EXP.show(0, Header.Instance.GetSummary().exp.relative_exp, Header.Instance.GetSummary().exp.relative_next, unitinfo.Status.level);
+            StarDisp.Init();
+
+            relative_exp = Header.Instance.GetSummary().exp.relative_exp;
+            relative_next = Header.Instance.GetSummary().exp.relative_next;
+
+            EXP.show(0, relative_exp, relative_next, unitinfo.Status.level);
             movetime = 0.2f;
 
             attack_flg = true;
@@ -104,6 +119,9 @@ public class UnitBehaviour : MonoBehaviour
             movetime = 0.4f * 2;
             unitinfo.Info.cost = 20;//一旦書き換え
         }
+
+        star.Add("challenger", 0);
+        star.Add("defender", 0);
 
         // Coroutineをとりあえず動かしておく。
         StartCoroutine(this.walk());
@@ -490,6 +508,16 @@ public class UnitBehaviour : MonoBehaviour
                     UnitEvent(unitinfo.no, "dam", damage);
                     yield return StartCoroutine(setEffects("dam"));
                     yield return StartCoroutine(setEffects("collap"));
+                    
+                    // 敵を倒した時の経験値取得（サーバ側のFieldBattleUtil::getFieldReward()に相当）
+                    int exp = GetFieldReward(unitinfo, emeny);
+                    
+                    // 倒されたユニットの位置から経験値をドロップするため、倒されたユニットのUnitBehaviourから呼び出す
+                    if (Stage.objUnits.units.ContainsKey("unit_" + unitinfo.no))
+                    {
+                        Stage.objUnits.units["unit_" + unitinfo.no].DropExp(exp);
+                    }
+                    
                     UnitRemove();
                 }
             }
@@ -747,6 +775,7 @@ public class UnitBehaviour : MonoBehaviour
         return result;
     }
 
+
     private Dictionary<string, float> omissionBattle(jsonUnit challenger, jsonUnit defender)
     {
         // スピードバランスを取得。
@@ -756,11 +785,6 @@ public class UnitBehaviour : MonoBehaviour
         Dictionary<string, float> result = new Dictionary<string, float>();
         result.Add("challenger", 0);
         result.Add("defender", 0);
-
-        // リベンジカウントの初期化。
-        Dictionary<string, int> star = new Dictionary<string, int>();
-        star.Add("challenger", 0);
-        star.Add("defender", 0);
 
         // ノーマルダメージの計算。規定回数繰り返す。
         for (int i = 0; i < 10; i++)
@@ -785,12 +809,19 @@ public class UnitBehaviour : MonoBehaviour
                 );
 
                 // スターに変換されたならスターカウントを、ダメージになったならダメージをアップ。
-                if (damage == -1)
+                if (damage == -1) { 
                     star[attacker]++;
-                else if (damage == -2)
+                    AddStar(star[attacker]);
+                }
+                else if (damage == -2) 
+                { 
                     star[defencer]++;
+                    AddStar(star[defencer]);
+                }
                 else
+                {
                     result[defencer] += damage;
+                }
             }
 
             // ダメージがHPを上回ったならそこでストップ。
@@ -799,6 +830,7 @@ public class UnitBehaviour : MonoBehaviour
         }
 
         // リベンジの計算。攻め側⇒受け側の順で処理する。
+        /*
         for (int side = 0; side < 2; side++)
         {
             var attackerinfo = side == 1 ? defender : challenger;
@@ -812,9 +844,99 @@ public class UnitBehaviour : MonoBehaviour
                 attackerinfo, defencerinfo, star[attacker], speedBalance * (side == 1 ? -1 : +1)
             );
         }
+        */
 
         // リターン。
         return result;
+    }
+
+    private void AddStar(int unitNo)
+    {
+        var playerUnit = Sphere.getUnitByCode("avatar");
+
+        if (unitinfo.no == playerUnit.no)
+            StarDisp.add();
+    }
+
+
+    public void DropExp(int amount)
+    {
+        var count = amount / expPref.GetExpAmount();
+        var playerUnit = Sphere.getUnitByCode("avatar");
+        var playerobj = Stage.objUnits.units["unit_" + playerUnit.no];
+
+        var pos = transform.localPosition;
+
+        for (int i = 0; i < count; i++)
+        {
+            // ランダムオフセットを追加
+            float offsetX = UnityEngine.Random.Range(-30f, 30f);
+            float offsetY = UnityEngine.Random.Range(-30f, 30f);
+
+            var offset = new Vector3(offsetX, offsetY, 0);
+
+            var expPiece = Instantiate(expPref, Stage.transform);
+            expPiece.Setup(playerobj, pos + offset);
+        }
+    }
+
+    public void DespawnExp(ExpPiece exp)
+    {
+        exp.gameObject.SetActive(false);
+        GameObject.Destroy(exp.gameObject);
+    }
+
+    public void AddExp(int value)
+    {
+        relative_exp += value;
+        EXP.show(0, relative_exp, relative_next, unitinfo.Status.level);
+
+        return;
+    }
+
+    /// <summary>
+    /// フィールド上で敵を倒した時の経験値とお金を計算する（サーバ側のFieldBattleUtil::getFieldReward()に相当）
+    /// </summary>
+    /// <param name="terminated">倒されたユニットのデータ</param>
+    /// <param name="terminator">倒したユニットのデータ</param>
+    /// <returns>獲得経験値</returns>
+    private int GetFieldReward(jsonUnit terminated, jsonUnit terminator)
+    {
+        // 経験値は7割（サーバ側のFieldBattleUtil::getFieldReward()と同じ）
+        return (int)(GetFullExp(terminator, terminated) * 0.7f);
+    }
+
+    /// <summary>
+    /// フルターン、フルダメージで勝った時の経験値を計算する（サーバ側のBattleCommon::getFullExp()に相当）
+    /// </summary>
+    /// <param name="winner">勝ったキャラの情報</param>
+    /// <param name="loser">負けたキャラの情報</param>
+    /// <returns>フルターン、フルダメージの場合の経験値</returns>
+    private float GetFullExp(jsonUnit winner, jsonUnit loser)
+    {
+        // 基本経験値を取得（固定40）
+        float baseExp = GetBaseExp(loser);
+
+        // レベル差による倍率を求める。[(相手の強さ/自分の強さ)の3乗] とする。
+        // 「強さ」とはLvに10を足した値とする。
+        float winnerStrength = winner.Status.level + 10;
+        float loserStrength = loser.Status.level + 10;
+        float rate = Mathf.Pow(loserStrength / winnerStrength, 3);
+
+        // 基本経験値に倍率をかけて、完全経験値とする。
+        // ただし、倍率は3倍を上限とする。
+        return baseExp * Mathf.Min(rate, 3.0f);
+    }
+
+    /// <summary>
+    /// 基底の経験値計算（サーバ側のBattleCommon::getBaseExp()に相当）
+    /// </summary>
+    /// <param name="oppositeChara">相手のキャラクター情報</param>
+    /// <returns>基本経験値（固定40）</returns>
+    private float GetBaseExp(jsonUnit oppositeChara)
+    {
+        // 基底は固定で40
+        return 40;
     }
 
     public int calcNormalDamage(jsonUnit attacker, int attackCard, jsonUnit defencer, int defenceCard, double speedBalance)

@@ -343,19 +343,19 @@ public class StageBehaviour : BaseBehaviour
             {
                 Sphere.gamestate.is_pause = true;
                 // ポーズ中はEscキーでポーズ解除
-                //Sphere.showPreter("Esc:pause解除", "center");
-                //Time.timeScale = 0.0f;
-                //AudioManager.Instance.PauseBGM();
-                User.objMC.BtnExitClick();
+                Sphere.showPreter("Esc:pause解除", "center");
+                Time.timeScale = 0.0f;
+                AudioManager.Instance.PauseBGM();
+                //User.objMC.BtnExitClick();
             }
             else
             {
                 Sphere.gamestate.is_pause = false;
                 // ポーズ中でない場合はポーズを開く
-                //Sphere.Preter.SetActive(false);
-                //Time.timeScale = 1f;
-                //AudioManager.Instance.UnPauseBGM();
-                User.OkCancel.onCancel();
+                Sphere.Preter.SetActive(false);
+                Time.timeScale = 1f;
+                AudioManager.Instance.UnPauseBGM();
+                //User.OkCancel.onCancel();
             }
         }
 

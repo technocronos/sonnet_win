@@ -2045,6 +2045,8 @@ public class jsonSphere
     public jsonRaidDungeon raid_dungeon;
 
     public string jsonfile;
+
+    public int quest_id;
 }
 
 [Serializable]

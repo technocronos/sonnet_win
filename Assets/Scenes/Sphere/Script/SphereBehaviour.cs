@@ -2546,17 +2546,78 @@ public class SphereBehaviour : BaseBehaviour
                 newUnit.Info.align = 0;
 
                 // UnitStatusを設定
-                newUnit.Status.level = 1; // レベルは後で計算する必要があるが、とりあえず1
-                newUnit.Status.hp = (int)charInfo.hp;
-                newUnit.Status.maxhp = (int)charInfo.hp_max;
-                newUnit.Status.att1 = charInfo.attack1;
-                newUnit.Status.att2 = charInfo.attack2;
-                newUnit.Status.att3 = charInfo.attack3;
-                newUnit.Status.def1 = charInfo.defence1;
-                newUnit.Status.def2 = charInfo.defence2;
-                newUnit.Status.def3 = charInfo.defence3;
+                // サーバ側のSphereUnit::createDefineUnit()と同じロジックでレベル補正を適用
+                // 経験値からレベルを取得（サーバ側のLevel_MasterService::getLevelByExp()に相当）
+                int baseLevel = LevelMasterModel.GetLevelByExp(charInfo.race, charInfo.exp);
+                int finalLevel = baseLevel;
+                int finalHpMax = (int)charInfo.hp_max;
+                
+                // transcend_adaptの処理（デフォルトはtrue）
+                bool transcendAdapt = unitDefine["transcend_adapt"] == null || unitDefine["transcend_adapt"].Value<bool>();
+                if (transcendAdapt)
+                {
+                    int transcendLevel = GetTranscendLevel();
+                    finalLevel = baseLevel + transcendLevel;
+                    finalHpMax += (int)(transcendLevel * 2.88f);
+                }
+                
+                // add_levelの処理
+                var addLevelToken = unitDefine["add_level"];
+                if (addLevelToken != null)
+                {
+                    int addLevel = addLevelToken.Value<int>();
+                    finalLevel += addLevel;
+                    finalHpMax += (int)(addLevel * 2.88f);
+                }
+                
+                newUnit.Status.level = finalLevel;
+                newUnit.Status.hp = finalHpMax; // サーバ側ではhp_maxから取得
+                newUnit.Status.maxhp = finalHpMax;
+                
+                // 攻撃力・防御力・速度の補正（サーバ側のgetAllProperty()と同じロジック）
+                int att1 = charInfo.attack1;
+                int att2 = charInfo.attack2;
+                int att3 = charInfo.attack3;
+                int def1 = charInfo.defence1;
+                int def2 = charInfo.defence2;
+                int def3 = charInfo.defence3;
+                int spd = charInfo.speed;
+                
+                // transcend_adaptによる補正
+                if (transcendAdapt)
+                {
+                    int revise = (int)(GetTranscendLevel() * 1.5f);
+                    att1 += revise;
+                    att2 += revise;
+                    att3 += revise;
+                    def1 += revise;
+                    def2 += revise;
+                    def3 += revise;
+                    spd += revise;
+                }
+                
+                // add_levelによる補正
+                if (addLevelToken != null)
+                {
+                    int addLevel = addLevelToken.Value<int>();
+                    int revise = (int)(addLevel * 1.5f);
+                    att1 += revise;
+                    att2 += revise;
+                    att3 += revise;
+                    def1 += revise;
+                    def2 += revise;
+                    def3 += revise;
+                    spd += revise;
+                }
+                
+                newUnit.Status.att1 = att1;
+                newUnit.Status.att2 = att2;
+                newUnit.Status.att3 = att3;
+                newUnit.Status.def1 = def1;
+                newUnit.Status.def2 = def2;
+                newUnit.Status.def3 = def3;
                 newUnit.Status.defX = charInfo.defenceX;
-                newUnit.Status.spd = charInfo.speed;
+                newUnit.Status.spd = spd;
 
                 // ユニットをsphereに追加
                 sphere.unit[newUnitNo] = newUnit;
@@ -3062,6 +3123,49 @@ public class SphereBehaviour : BaseBehaviour
         // Unity側では必要に応じて実装
 
         return true;
+    }
+
+    /// <summary>
+    /// 超越レベルを取得する（サーバ側のSphereCommon::getTranscendLevel()に相当）
+    /// 現時点では、FIRST_TRYフラグの情報がないため0を返す。
+    /// 将来的にサーバ側からFIRST_TRYの情報を送るようにするか、Unity側で計算できるようにする必要がある。
+    /// </summary>
+    /// <returns>超越レベル（最大230）</returns>
+    private int GetTranscendLevel()
+    {
+        // quest_idが取得できない場合は0を返す
+        if (sphere == null || sphere.quest_id == 0)
+            return 0;
+
+        // quest_masterからupper_levelを取得
+        var quest = QuestMasterModel.Rows.Find(q => q.quest_id == sphere.quest_id);
+        if (quest == null || quest.upper_level == 0)
+            return 0;
+
+        // 現時点では、FIRST_TRYフラグの情報がないため0を返す
+        // 将来的にサーバ側からFIRST_TRYの情報を送るようにするか、Unity側で計算できるようにする必要がある
+        // TODO: FIRST_TRYフラグの情報を取得して計算する
+        int firstLevel = 0; // 現時点では0（サーバ側から送られてくる情報を使用する必要がある）
+
+        // 初回突入レベルが想定上限より高いならその差を、そうでないなら 0 を返す
+        if (firstLevel > quest.upper_level)
+        {
+            int lv = firstLevel - quest.upper_level;
+            // TRANSCEND_LEVEL_MAX以上は上げない（サーバ側の定数: 230）
+            const int TRANSCEND_LEVEL_MAX = 230;
+            if (lv >= TRANSCEND_LEVEL_MAX)
+            {
+                return TRANSCEND_LEVEL_MAX;
+            }
+            else
+            {
+                return lv;
+            }
+        }
+        else
+        {
+            return 0;
+        }
     }
 
 }
