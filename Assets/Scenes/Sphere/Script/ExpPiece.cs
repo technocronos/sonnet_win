@@ -44,11 +44,36 @@ public class ExpPiece : MonoBehaviour
                 yield return null;
             }
         }
+        // 経験値が落ちている位置をマップ座標に変換（初期位置を保存）
+        var sphere = SphereBehaviour.Instance;
+        float expX = transform.localPosition.x / sphere.TIP_SIZE;
+        float expY = (transform.localPosition.y * -1) / sphere.TIP_SIZE;
+        
+        // その位置のコストをチェック
+        int checkX = (int) Mathf.Floor(expX);
+        int checkY = (int) Mathf.Floor(expY);
+        int maxCost = GetCost(checkX, checkY);
+        
+        bool isCost9999 = (maxCost >= 9990);
+        
         while (true)
         {
             yield return null;
-            var pos = Camera.main.WorldToViewportPoint(transform.position);
-            if (pos.x > 1.5f || pos.x < -0.5f || pos.y > 1.5f || pos.y < -0.5f) unit.DespawnExp(this);
+            
+            if (isCost9999 && unit != null)
+            {
+                // コスト9999の場所に落ちている場合、プレイヤーが前後左右1チップ分以内に近づいたらDespawnExp
+                Vector3 playerPos = unit.transform.localPosition;
+                
+                float diffX = Mathf.Abs(transform.localPosition.x - playerPos.x);
+                float diffY = Mathf.Abs(transform.localPosition.y - playerPos.y);
+                
+                if (diffX <= sphere.TIP_SIZE && diffY <= sphere.TIP_SIZE)
+                {
+                   OnComplete();
+                    yield break;
+                }
+            }
         }
     }
 
@@ -81,6 +106,15 @@ public class ExpPiece : MonoBehaviour
         AudioManager.Instance.PlaySE("se_coin");
         unit.AddExp(add_exp);
         unit.DespawnExp(this);
+    }
+
+    private int GetCost(int x, int y)
+    {
+        string costKey = "cost" + x + "_" + y;
+        var stage = StageBehaviour.Instance;
+        if (stage != null && stage.cost.ContainsKey(costKey))
+            return (int)stage.cost[costKey];
+        return 9999; // 到達不能
     }
 
 }
