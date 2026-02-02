@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using DG.Tweening;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -20,10 +21,14 @@ public class StarDispBehaviour : MonoBehaviour
     }
 
     private static StarDispBehaviour instance;
+    private Vector2 pos;
+    private Tweener tween;
 
     private void Start()
     {
         instance = this;
+        pos = transform.localPosition;
+        tween = null;
     }
 
     /// <summary>
@@ -39,6 +44,17 @@ public class StarDispBehaviour : MonoBehaviour
 
     public void add()
     {
+        AudioManager.Instance.PlaySE("se_coin");
+
+        if (tween == null)
+        {
+            tween = transform.DOPunchPosition(new Vector3(0, 5, 0), 1f, 10, 1f);
+            tween.OnComplete(() => {
+                transform.localPosition = pos;
+                tween = null;
+            });
+        }
+
         star++;
         //Debug.Log("add star=" + star);
 
@@ -51,5 +67,9 @@ public class StarDispBehaviour : MonoBehaviour
         Text.text = star.ToString();
     }
 
+    public void hide()
+    {
+        transform.gameObject.SetActive(false);
+    }
 
 }

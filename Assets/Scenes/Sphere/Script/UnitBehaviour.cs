@@ -116,6 +116,8 @@ public class UnitBehaviour : MonoBehaviour
         }
         else
         {
+            StarDisp.hide();
+
             movetime = 0.4f * 2;
             unitinfo.Info.cost = 20;//一旦書き換え
         }
@@ -855,7 +857,11 @@ public class UnitBehaviour : MonoBehaviour
         var playerUnit = Sphere.getUnitByCode("avatar");
 
         if (unitinfo.no == playerUnit.no)
+        {
+
             StarDisp.add();
+
+        }
     }
 
 
