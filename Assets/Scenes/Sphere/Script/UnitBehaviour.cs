@@ -494,7 +494,7 @@ public class UnitBehaviour : MonoBehaviour
                 Sphere.gamestate.is_gameover = true;
                 Sphere.gamestate.is_stop = true;
                 commandkeyrecv = false;
-                Stage.act_start = true;
+                //Stage.act_start = true;
 
                 UnitEvent(unitinfo.no, "dam", damage);
                 //yield return StartCoroutine(setEffects("dam"));
