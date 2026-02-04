@@ -13,8 +13,8 @@ public class StarDispBehaviour : MonoBehaviour
     [SerializeField]
     private Animator Anim;
 
-    public const int RevengeFireCount = 40;
-    public const int RevengeConsumeStar = 4;
+    public const int RevengeFireCount = 30;
+    public const int RevengeConsumeStar = 3;
 
     private int star = 0;
 

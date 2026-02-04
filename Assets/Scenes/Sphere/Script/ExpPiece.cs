@@ -92,6 +92,8 @@ public class ExpPiece : MonoBehaviour
                 var elapsed = 0.0f;
                 while (elapsed <= 1.0f)
                 {
+                    if (unit == null) yield break;
+
                     this.transform.position = Vector3.Lerp(pos1, unit.transform.position, elapsed);
                     elapsed += Time.deltaTime * 4;
                     yield return null;
