@@ -19,6 +19,8 @@ public class UnitBehaviour : MonoBehaviour
     [SerializeField]
     private StarDispBehaviour StarDisp;
     [SerializeField]
+    private RevengeBehaviour Revenge;
+    [SerializeField]
     private GameObject weapon_slash;
     [SerializeField]
     private Animator SlashAnim;
@@ -64,13 +66,10 @@ public class UnitBehaviour : MonoBehaviour
     private float Y= 0f;
 
     private int no = -1;
-    private jsonUnit unitinfo = new jsonUnit();
+    public jsonUnit unitinfo = new jsonUnit();
 
     public Tween currentMoveTween { get; set; } = null;
     private bool wasStopped = false;
-
-    // リベンジカウント
-    Dictionary<string, int> star = new Dictionary<string, int>();
 
     int relative_exp = 0;
     int relative_next = 0;
@@ -116,15 +115,9 @@ public class UnitBehaviour : MonoBehaviour
         }
         else
         {
-            StarDisp.hide();
-
             movetime = 0.4f * 2;
             unitinfo.Info.cost = 20;//一旦書き換え
         }
-
-        star.Add("challenger", 0);
-        star.Add("defender", 0);
-
         // Coroutineをとりあえず動かしておく。
         StartCoroutine(this.walk());
     }
@@ -472,65 +465,74 @@ public class UnitBehaviour : MonoBehaviour
 
             int damage = (int)battleResult["defender"];
 
-            death = false;
-            if (unitinfo.Status.hp - damage <= 0)
+            if (StarDisp.get() >= StarDispBehaviour.RevengeFireCount)
             {
-                damage = unitinfo.Status.hp;
-                death = true;
+                FireRevenge();
             }
 
-            unitinfo.Status.hp -= damage;
-
-            HP.show(unitinfo.no);
-
-            if (death)
-            {
-                if (unitinfo.code == "avatar")
-                {
-                    Sphere.gamestate.is_gameover = true;
-                    Sphere.gamestate.is_stop = true;
-                    commandkeyrecv = false;
-                    Stage.act_start = true;
-
-                    UnitEvent(unitinfo.no, "dam", damage);
-                    yield return StartCoroutine(setEffects("dam"));
-                    yield return StartCoroutine(setEffects("collap"));
-
-                    UnitRemove();
-
-                    Sphere.GameOver(unitinfo.no, damage);
-                }
-                else
-                {
-                    if (currentMoveTween != null && currentMoveTween.IsActive())
-                    {
-                        currentMoveTween.Pause();
-                    }
-
-                    UnitEvent(unitinfo.no, "dam", damage);
-                    yield return StartCoroutine(setEffects("dam"));
-                    yield return StartCoroutine(setEffects("collap"));
-                    
-                    // 敵を倒した時の経験値取得（サーバ側のFieldBattleUtil::getFieldReward()に相当）
-                    int exp = GetFieldReward(unitinfo, emeny);
-                    
-                    // 倒されたユニットの位置から経験値をドロップするため、倒されたユニットのUnitBehaviourから呼び出す
-                    if (Stage.objUnits.units.ContainsKey("unit_" + unitinfo.no))
-                    {
-                        Stage.objUnits.units["unit_" + unitinfo.no].DropExp(exp);
-                    }
-                    
-                    UnitRemove();
-                }
-            }
-            else
-            {
-                UnitEvent(unitinfo.no, "dam",damage);
-                StartCoroutine(setEffects("dam"));
-            }
+            yield return StartCoroutine(TakeDamage(damage, emeny));
         }
     }
 
+    public IEnumerator TakeDamage(int damage, jsonUnit emeny)
+    {
+        death = false;
+        if (unitinfo.Status.hp - damage <= 0)
+        {
+            damage = unitinfo.Status.hp;
+            death = true;
+        }
+
+        unitinfo.Status.hp -= damage;
+
+        HP.show(unitinfo.no);
+
+        if (death)
+        {
+            if (unitinfo.code == "avatar")
+            {
+                Sphere.gamestate.is_gameover = true;
+                Sphere.gamestate.is_stop = true;
+                commandkeyrecv = false;
+                Stage.act_start = true;
+
+                UnitEvent(unitinfo.no, "dam", damage);
+                //yield return StartCoroutine(setEffects("dam"));
+                yield return StartCoroutine(setEffects("collap"));
+
+                UnitRemove();
+
+                Sphere.GameOver(unitinfo.no, damage);
+            }
+            else
+            {
+                if (currentMoveTween != null && currentMoveTween.IsActive())
+                {
+                    currentMoveTween.Pause();
+                }
+
+                UnitEvent(unitinfo.no, "dam", damage);
+                //yield return StartCoroutine(setEffects("dam"));
+                yield return StartCoroutine(setEffects("collap"));
+
+                // 敵を倒した時の経験値取得（サーバ側のFieldBattleUtil::getFieldReward()に相当）
+                int exp = GetFieldReward(unitinfo, emeny);
+
+                // 倒されたユニットの位置から経験値をドロップするため、倒されたユニットのUnitBehaviourから呼び出す
+                if (Stage.objUnits.units.ContainsKey("unit_" + unitinfo.no))
+                {
+                    Stage.objUnits.units["unit_" + unitinfo.no].DropExp(exp);
+                }
+
+                UnitRemove();
+            }
+        }
+        else
+        {
+            UnitEvent(unitinfo.no, "dam", damage);
+            StartCoroutine(setEffects("dam"));
+        }
+    }
     IEnumerator wait_effec()
     {
         while (this.walk_stop)
@@ -702,41 +704,11 @@ public class UnitBehaviour : MonoBehaviour
         }
 
         int hashAnim = Animator.StringToHash(_effectName);
-        Anim.Play(hashAnim, 0, 0f);
+        Anim.Play(hashAnim);
 
         // アニメーションが実際に開始されるまで1フレーム待つ
         yield return null;
-
-        // アニメーションが開始されたことを確認
-        yield return new WaitUntil(() =>
-        {
-            var stateInfo = Anim.GetCurrentAnimatorStateInfo(0);
-            return stateInfo.IsName(_effectName) || isCancelled;
-        });
-
-        if (isCancelled)
-        {
-            Debug.Log("アニメーションがキャンセルされました");
-            walk_stop = false;
-            Anim.SetBool(_effectName, false);
-            yield break;
-        }
-
-        // アニメーション完了を待つ
-        yield return new WaitUntil(() =>
-        {
-            var stateInfo = Anim.GetCurrentAnimatorStateInfo(0);
-            return stateInfo.normalizedTime >= 1f || isCancelled;
-        });
-
-        if (isCancelled)
-        {
-            Debug.Log("アニメーションがキャンセルされました");
-        }
-        else
-        {
-            Debug.Log("アニメーションが通常終了しました");
-        }
+        yield return new WaitForAnimation(Anim, 0);
 
         walk_stop = false;
         Anim.SetBool(_effectName, false);
@@ -783,6 +755,12 @@ public class UnitBehaviour : MonoBehaviour
         // スピードバランスを取得。
         double speedBalance = getSpeedBalance(challenger, defender);
 
+        // リベンジカウント
+        Dictionary<string, int> star = new Dictionary<string, int>();
+
+        star.Add("challenger", 0);
+        star.Add("defender", 0);
+
         // ダメージ初期化。
         Dictionary<string, float> result = new Dictionary<string, float>();
         result.Add("challenger", 0);
@@ -813,12 +791,12 @@ public class UnitBehaviour : MonoBehaviour
                 // スターに変換されたならスターカウントを、ダメージになったならダメージをアップ。
                 if (damage == -1) { 
                     star[attacker]++;
-                    AddStar(star[attacker]);
+                    AddStar(challenger.no);
                 }
                 else if (damage == -2) 
                 { 
                     star[defencer]++;
-                    AddStar(star[defencer]);
+                    AddStar(defender.no);
                 }
                 else
                 {
@@ -828,25 +806,8 @@ public class UnitBehaviour : MonoBehaviour
 
             // ダメージがHPを上回ったならそこでストップ。
             if (challenger.Status.hp <= result["challenger"] || defender.Status.hp <= result["defender"])
-                return result;
+                break;
         }
-
-        // リベンジの計算。攻め側⇒受け側の順で処理する。
-        /*
-        for (int side = 0; side < 2; side++)
-        {
-            var attackerinfo = side == 1 ? defender : challenger;
-            var defencerinfo = side == 1 ? challenger : defender;
-
-            var attacker = side == 1 ? "defender" : "challenger";
-            var defencer = side == 1 ? "challenger" : "defender";
-
-            // ダメージ計算。
-            result[defencer] += calcRevengeDamage(
-                attackerinfo, defencerinfo, star[attacker], speedBalance * (side == 1 ? -1 : +1)
-            );
-        }
-        */
 
         // リターン。
         return result;
@@ -856,7 +817,7 @@ public class UnitBehaviour : MonoBehaviour
     {
         var playerUnit = Sphere.getUnitByCode("avatar");
 
-        if (unitinfo.no == playerUnit.no)
+        if (unitinfo.no == playerUnit.no && playerUnit.Status.hp > 0)
         {
 
             StarDisp.add();
@@ -864,6 +825,32 @@ public class UnitBehaviour : MonoBehaviour
         }
     }
 
+    private void FireRevenge()
+    {
+        int StarCount = StarDisp.get();
+
+        var playerobj = Stage.objUnits.units["unit_" + unitinfo.no];
+
+        // リベンジオブジェクトの総数（スター数）
+        int totalRevengeCount = (int) Mathf.Floor(StarCount / StarDispBehaviour.RevengeConsumeStar);
+
+        for (int i = 0; i < totalRevengeCount; i++)
+        {
+            // 攻撃カードの決定。
+            var card = UnityEngine.Random.Range(1, 3);
+
+            StarDisp.use();
+
+            // リベンジオブジェクトを生成
+            GameObject revengeObj = Instantiate(Revenge.gameObject, Stage.transform);
+            RevengeBehaviour revengeBehaviour = revengeObj.GetComponent<RevengeBehaviour>();
+            if (revengeBehaviour != null)
+            {
+                // 各リベンジオブジェクトにインデックスと総数を渡して均等に分散させる
+                revengeBehaviour.init(playerobj, card, i, totalRevengeCount);
+            }
+        }
+    }
 
     public void DropExp(int amount)
     {
@@ -993,7 +980,7 @@ public class UnitBehaviour : MonoBehaviour
         return calcDamage(attacker_total_attack, defencer_total_attack);
     }
 
-    public int calcRevengeDamage(jsonUnit attacker, jsonUnit defencer, int starCount, double speedBalance)
+    public int calcRevengeDamage(jsonUnit attacker, jsonUnit defencer, int starCount, double speedBalance, int card_type = 0)
     {
 
         // ダメージ初期化。
@@ -1008,7 +995,9 @@ public class UnitBehaviour : MonoBehaviour
                 continue;
 
             // 攻撃カードの決定。
-            var card = UnityEngine.Random.Range(1, 3);
+            var card = card_type;
+            if(card == 0)
+                card = UnityEngine.Random.Range(1, 3);
 
             float attacker_total_attack = 0;
             if (card == 1)
