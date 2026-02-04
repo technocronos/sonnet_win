@@ -235,14 +235,11 @@ public class StageBehaviour : BaseBehaviour
         moveY = 0;
         this.moveCsr();
 
-        // カーソルを非表示に。
-        _cursor.enabled = false;
-
         //battle_movie._visible = false;
 
         // 主人公ユニットにカーソルを合わせる。
-        //TODO::主人公ユニットが必ずしも1とは限らない・・
-        unitNo = 1;
+        var avatar = Sphere.getUnitByCode("avatar");
+        unitNo = avatar.no;
         this.focus();
 
         // カーソルを追随して画面を動かすようにする。

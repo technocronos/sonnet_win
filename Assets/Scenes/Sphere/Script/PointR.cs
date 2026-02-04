@@ -54,7 +54,7 @@ class PointR
         this.refInfo();
 
         // ステージ上のカーソルを表示。
-        Stage._cursor.enabled = true;
+        //Stage._cursor.enabled = true;
     }
 
     //
