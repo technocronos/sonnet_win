@@ -135,7 +135,7 @@ public class RevengeBehaviour : MonoBehaviour
                 // スピードバランスを取得。
                 double speedBalance = unit.getSpeedBalance(attacker, defencer);
 
-                var damage = unit.calcRevengeDamage(attacker, defencer, 1, speedBalance, card_type);
+                var damage = unit.calcRevengeDamage(attacker, defencer, StarDispBehaviour.RevengeConsumeStar, speedBalance, card_type);
 
                 var collunit = collision.transform.GetComponent<UnitBehaviour>();
 
