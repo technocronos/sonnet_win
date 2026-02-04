@@ -41,7 +41,7 @@ public class RevengeBehaviour : MonoBehaviour
         float radius = Sphere.TIP_SIZE * 0.8f;
 
         // 回転速度（1秒で360度回転）
-        float rotationSpeed = 300f;
+        float rotationSpeed = 200f;
 
         // 初期角度を計算（複数のリベンジオブジェクトが均等に分散するように）
         // 360度を総数で割って、インデックス分の角度を加算

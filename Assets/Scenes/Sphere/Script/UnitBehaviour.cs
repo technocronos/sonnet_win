@@ -467,7 +467,7 @@ public class UnitBehaviour : MonoBehaviour
 
             if (StarDisp.get() >= StarDispBehaviour.RevengeFireCount)
             {
-                FireRevenge();
+                StartCoroutine(FireRevenge());
             }
 
             yield return StartCoroutine(TakeDamage(damage, emeny));
@@ -701,10 +701,14 @@ public class UnitBehaviour : MonoBehaviour
                 HP.hide();
                 AudioManager.Instance.PlaySE("se_explosionshort");
                 break;
+            case "recov":
+                AudioManager.Instance.PlaySE("se_repair");
+                break;
         }
 
-        int hashAnim = Animator.StringToHash(_effectName);
-        Anim.Play(hashAnim);
+        Anim.SetBool(_effectName, true);
+        //int hashAnim = Animator.StringToHash(_effectName);
+        //Anim.Play(hashAnim);
 
         // アニメーションが実際に開始されるまで1フレーム待つ
         yield return null;
@@ -825,7 +829,7 @@ public class UnitBehaviour : MonoBehaviour
         }
     }
 
-    private void FireRevenge()
+    private IEnumerator FireRevenge()
     {
         int StarCount = StarDisp.get();
 
@@ -833,6 +837,12 @@ public class UnitBehaviour : MonoBehaviour
 
         // リベンジオブジェクトの総数（スター数）
         int totalRevengeCount = (int) Mathf.Floor(StarCount / StarDispBehaviour.RevengeConsumeStar);
+
+        Sphere.gamestate.is_stop = true;
+
+        var txt = "リベンジ発動！！";
+        Sphere.showPreter(txt, "top");
+        yield return StartCoroutine(setEffects("recov"));
 
         for (int i = 0; i < totalRevengeCount; i++)
         {
@@ -850,6 +860,12 @@ public class UnitBehaviour : MonoBehaviour
                 revengeBehaviour.init(playerobj, card, i, totalRevengeCount);
             }
         }
+
+        yield return new WaitForSeconds(1.5f);
+
+        Sphere.Preter.SetActive(false);
+        Sphere.gamestate.is_stop = false;
+
     }
 
     public void DropExp(int amount)
