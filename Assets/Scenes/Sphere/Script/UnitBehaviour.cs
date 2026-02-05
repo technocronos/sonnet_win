@@ -2,8 +2,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.Experimental.GraphView;
-using UnityEditor.Localization.Plugins.XLIFF.V12;
 using UnityEngine;
 
 public class UnitBehaviour : MonoBehaviour
@@ -838,11 +836,81 @@ public class UnitBehaviour : MonoBehaviour
         // リベンジオブジェクトの総数（スター数）
         int totalRevengeCount = (int) Mathf.Floor(StarCount / StarDispBehaviour.RevengeConsumeStar);
 
+
         Sphere.gamestate.is_stop = true;
 
         var txt = "リベンジ発動！！";
         Sphere.showPreter(txt, "top");
-        yield return StartCoroutine(setEffects("recov"));
+        StartCoroutine(setEffects("recov"));
+
+
+        // リベンジオブジェクトの回転半径（RevengeBehaviour.csと同じ値）
+        float revengeRadius = Sphere.TIP_SIZE * 0.8f;
+        // 退避距離（回転半径より少し外側）
+        float retreatDistance = Sphere.TIP_SIZE * 1.5f;
+
+        // プレイヤーの位置を取得
+        Vector3 playerPos = playerobj.transform.localPosition;
+        float playerCenterX = playerPos.x + Sphere.UNIT_SIZE * 0.5f;
+        float playerCenterY = playerPos.y - Sphere.UNIT_SIZE * 0.5f;
+
+        // プレイヤー近くの敵を検出して退避させる
+        List<Dictionary<string, object>> retreatingEnemies = new List<Dictionary<string, object>>();
+        
+        foreach (var kvp in Sphere.sphere.unit)
+        {
+            var enemyUnit = kvp.Value;
+            // プレイヤー自身や既に倒れた敵はスキップ
+            if (enemyUnit.code == "avatar" || enemyUnit.X < 0)
+                continue;
+            
+            // 同じ所属（味方）はスキップ
+            if (enemyUnit.Info.union == unitinfo.Info.union)
+                continue;
+
+            // 敵のUnitBehaviourを取得
+            string enemyKey = "unit_" + enemyUnit.no;
+            if (!Stage.objUnits.units.ContainsKey(enemyKey))
+                continue;
+            
+            var enemyObj = Stage.objUnits.units[enemyKey];
+            Vector3 enemyPos = enemyObj.transform.localPosition;
+            float enemyCenterX = enemyPos.x + Sphere.UNIT_SIZE * 0.5f;
+            float enemyCenterY = enemyPos.y - Sphere.UNIT_SIZE * 0.5f;
+
+            // プレイヤーからの距離を計算
+            float distanceX = enemyCenterX - playerCenterX;
+            float distanceY = enemyCenterY - playerCenterY;
+            float distance = Mathf.Sqrt(distanceX * distanceX + distanceY * distanceY);
+
+            // リベンジオブジェクトの回転半径より近い場合は退避させる
+            if (distance < revengeRadius)
+            {
+                // 退避先の位置を計算（プレイヤーから離れる方向）
+                float angle = Mathf.Atan2(distanceY, distanceX);
+                float retreatX = playerCenterX + Mathf.Cos(angle) * retreatDistance;
+                float retreatY = playerCenterY + Mathf.Sin(angle) * retreatDistance;
+
+                // 退避先の座標をマップ座標に変換
+                float retreatMapX = (retreatX - Sphere.UNIT_SIZE * 0.5f) / Sphere.TIP_SIZE;
+                float retreatMapY = ((retreatY + Sphere.UNIT_SIZE * 0.5f) * -1) / Sphere.TIP_SIZE;
+
+                // 0.5刻みにスナップ
+                retreatMapX = Mathf.Round(retreatMapX * 2f) / 2f;
+                retreatMapY = Mathf.Round(retreatMapY * 2f) / 2f;
+
+                // 敵を退避先に移動
+                enemyUnit.X = retreatMapX;
+                enemyUnit.Y = retreatMapY;
+                enemyObj.setPos(true);
+
+                Vector3 enemyUnitVector = new Vector3(enemyUnit.X * Sphere.TIP_SIZE + margin, (enemyUnit.Y * Sphere.TIP_SIZE + margin) * -1, 0);
+                enemyObj.transform.DOLocalMove(enemyUnitVector, movetime / 3).SetEase(Ease.Linear);
+            }
+        }
+
+        Debug.Log("退避完了");
+        yield return new WaitForSeconds(1f);
 
         for (int i = 0; i < totalRevengeCount; i++)
         {
@@ -860,8 +928,8 @@ public class UnitBehaviour : MonoBehaviour
                 revengeBehaviour.init(playerobj, card, i, totalRevengeCount);
             }
         }
-
-        yield return new WaitForSeconds(1.5f);
+        Debug.Log("revenge ready");
+        yield return new WaitForSeconds(0.5f);
 
         Sphere.Preter.SetActive(false);
         Sphere.gamestate.is_stop = false;
