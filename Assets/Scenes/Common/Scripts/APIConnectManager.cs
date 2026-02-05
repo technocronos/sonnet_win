@@ -1064,18 +1064,6 @@ public class jsonLogin
 
     public bool appsflyer;
 
-    public jsonTextMaster[] text_master;
-
-}
-
-[Serializable]
-public class jsonTextMaster
-{
-    public int text_id;
-    public string symbol;
-    public string ja;
-    public string en;
-    public string create_at;
 }
 
 [Serializable]

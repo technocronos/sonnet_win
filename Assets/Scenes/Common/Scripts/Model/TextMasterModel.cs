@@ -1,7 +1,9 @@
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using UnityEngine;
+using Scenes.Common.Scripts;
 
 /// <summary>
 /// text_master テーブルの1行を表すモデルクラス（スキーマ準拠）
@@ -61,8 +63,10 @@ public static class TextMasterModel
     /// <param name="symbol">シンボル（例: "text_log_body_123"）</param>
     /// <param name="lang">言語（0=日本語, 1=英語など）</param>
     /// <returns>テキスト。見つからない場合は空文字列</returns>
-    public static string GetText(string symbol, int lang = 0)
+    public static string GetText(string symbol)
     {
+        int lang = PlayerPrefs.GetInt(Settings.LANGUAGE_SELECTED_KEY);
+
         var row = Rows.Find(r => r.symbol == symbol);
         if (row == null)
             return "";
@@ -83,6 +87,6 @@ public static class TextMasterModel
     public static string GetCharacterName(int nameId, int lang = 0)
     {
         string symbol = "text_log_body_" + nameId;
-        return GetText(symbol, lang);
+        return Utility.getText(symbol);
     }
 }

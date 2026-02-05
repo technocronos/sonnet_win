@@ -460,25 +460,7 @@ public static class Utility
 
     public static string getText(string symbol)
     {
-        jsonTextMaster[] textmasters =  APIConnectManager.Instance.login.text_master;
-        int lang = PlayerPrefs.GetInt(Settings.LANGUAGE_SELECTED_KEY);
-
-        foreach(jsonTextMaster TextMaster in textmasters)
-        {
-            if(TextMaster.symbol == symbol)
-            {
-                if(lang == 0)
-                {
-                    return Regex.Unescape(TextMaster.ja);
-                }else
-                {
-                    return Regex.Unescape(TextMaster.en);
-                }
-            }
-        }
-
-        return string.Empty;
-
+        return TextMasterModel.GetText(symbol);
     }
 
     public static string getStatusIcon(int status, string patarn = "")
