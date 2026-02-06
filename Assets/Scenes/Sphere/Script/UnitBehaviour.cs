@@ -597,8 +597,10 @@ public class UnitBehaviour : MonoBehaviour
         }
     }
 
-    public void setPos(bool move = false)
+    public void setPos(bool move = false, float _movetime = 0)
     {
+        if (_movetime == 0) _movetime = movetime;
+
         int no = int.Parse(transform.name.Split('_')[1]);
 
         jsonUnit unitinfo = Sphere.sphere.unit[no];
@@ -616,7 +618,7 @@ public class UnitBehaviour : MonoBehaviour
                 currentMoveTween.Kill();
             }
 
-            currentMoveTween = transform.DOLocalMove(vector, movetime).SetEase(Ease.Linear);
+            currentMoveTween = transform.DOLocalMove(vector, _movetime).SetEase(Ease.Linear);
             currentMoveTween.OnComplete(() =>
             {
                 if (!death)
@@ -836,9 +838,6 @@ public class UnitBehaviour : MonoBehaviour
         // リベンジオブジェクトの総数（スター数）
         int totalRevengeCount = (int) Mathf.Floor(StarCount / StarDispBehaviour.RevengeConsumeStar);
 
-
-        Sphere.gamestate.is_stop = true;
-
         var txt = "リベンジ発動！！";
         Sphere.showPreter(txt, "top");
         StartCoroutine(setEffects("recov"));
@@ -856,7 +855,9 @@ public class UnitBehaviour : MonoBehaviour
 
         // プレイヤー近くの敵を検出して退避させる
         List<Dictionary<string, object>> retreatingEnemies = new List<Dictionary<string, object>>();
-        
+
+        bool escape_flg = false;
+
         foreach (var kvp in Sphere.sphere.unit)
         {
             var enemyUnit = kvp.Value;
@@ -886,6 +887,8 @@ public class UnitBehaviour : MonoBehaviour
             // リベンジオブジェクトの回転半径より近い場合は退避させる
             if (distance < revengeRadius)
             {
+                escape_flg = true;
+
                 // 退避先の位置を計算（プレイヤーから離れる方向）
                 float angle = Mathf.Atan2(distanceY, distanceX);
                 float retreatX = playerCenterX + Mathf.Cos(angle) * retreatDistance;
@@ -902,15 +905,43 @@ public class UnitBehaviour : MonoBehaviour
                 // 敵を退避先に移動
                 enemyUnit.X = retreatMapX;
                 enemyUnit.Y = retreatMapY;
-                enemyObj.setPos(true);
+                //enemyObj.setPos(true);
+
+                enemyObj.commandkeyrecv = false;
+                enemyObj.wasStopped = false;
+
+                if (enemyObj.currentMoveTween != null && enemyObj.currentMoveTween.IsActive())
+                {
+                    enemyObj.currentMoveTween.Kill();
+                }
 
                 Vector3 enemyUnitVector = new Vector3(enemyUnit.X * Sphere.TIP_SIZE + margin, (enemyUnit.Y * Sphere.TIP_SIZE + margin) * -1, 0);
-                enemyObj.transform.DOLocalMove(enemyUnitVector, movetime / 3).SetEase(Ease.Linear);
+                enemyObj.currentMoveTween = enemyObj.transform.DOLocalMove(enemyUnitVector, movetime / 3).SetEase(Ease.Linear);
+                enemyObj.currentMoveTween.OnComplete(() =>
+                {
+                    if (!enemyObj.death)
+                    {
+                        enemyObj.commandkeyrecv = true;
+                    }
+
+                    enemyObj.currentMoveTween = null;
+                    enemyObj.wasStopped = false;
+
+                    escape_flg = false;
+                });
+
             }
         }
 
+        while (escape_flg)
+        {
+            yield return null;
+        }
+
         Debug.Log("退避完了");
-        yield return new WaitForSeconds(1f);
+
+        Sphere.gamestate.is_stop = true;
+
 
         for (int i = 0; i < totalRevengeCount; i++)
         {
