@@ -452,6 +452,11 @@ public class UnitBehaviour : MonoBehaviour
         }
     }
 
+    public void setStatus()
+    {
+        HP.show(unitinfo.no);
+    }
+
     private IEnumerator CalcDamage(jsonUnit emeny)
     {
         //unionが違う場合のみダメージを与える
@@ -463,7 +468,7 @@ public class UnitBehaviour : MonoBehaviour
 
             int damage = (int)battleResult["defender"];
 
-            if (StarDisp.get() >= StarDispBehaviour.RevengeFireCount)
+            if (StarDisp.get() >= StarDispBehaviour.RevengeFireCount && unitinfo.Status.hp > 0)
             {
                 StartCoroutine(FireRevenge());
             }
@@ -690,8 +695,9 @@ public class UnitBehaviour : MonoBehaviour
         //エフェクト中は歩かない
         this.walk_stop = true;
         isCancelled = false;
+        int hashAnim = Animator.StringToHash(_effectName);
 
-        //サウンド再生。recovはコマンドで鳴らしているので不要。
+        //サウンド再生。
         switch (_effectName)
         {
             case "dam":
@@ -699,16 +705,16 @@ public class UnitBehaviour : MonoBehaviour
                 break;
             case "collap":
                 HP.hide();
+                Anim.Play(hashAnim);
                 AudioManager.Instance.PlaySE("se_explosionshort");
                 break;
             case "recov":
                 AudioManager.Instance.PlaySE("se_repair");
+                Anim.Play(hashAnim);
                 break;
         }
 
         Anim.SetBool(_effectName, true);
-        //int hashAnim = Animator.StringToHash(_effectName);
-        //Anim.Play(hashAnim);
 
         // アニメーションが実際に開始されるまで1フレーム待つ
         yield return null;

@@ -748,7 +748,13 @@ public class SphereBehaviour : BaseBehaviour
                     switch (name)
                     {
                         case "hp":
-                            leader.flow.Add("USTAT " + leader.unitNo + " " + (cur.hp + val) + " " + cur.maxhp + " " + cur.att1 + " " + cur.att2 + " " + cur.att3 + " " + cur.def1 + " " + cur.def2 + " " + cur.def3 + " " + cur.spd + " " + cur.defX);
+                            var ustatstr = string.Format("USTAT {0:D3} {1:D4} {2:D5} {3:D5} {4:D4} {5:D4} {6:D4} {7:D4} {8:D4} {9:D4} {10:D4} {11:D3}",
+                                                        leader.unitNo, cur.level, cur.hp, cur.maxhp,
+                                                        cur.att1, cur.att2, cur.att3,
+                                                        cur.def1, cur.def2, cur.def3,
+                                                        cur.spd, cur.defX);
+
+                            leader.flow.Add(ustatstr);
                             break;
                     }
 
@@ -940,7 +946,7 @@ public class SphereBehaviour : BaseBehaviour
             // 上部ウィンドウでメッセージの表示
             case "IPRET":
                 //IPRET ゴブリン Lv5が現れました
-                string txt = (command.Split(new char[] { ' ' }).Length > 2) ? command.Substring(6) : "";
+                string txt = (command.Split(new char[] { ' ' }).Length >= 2) ? command.Substring(6) : "";
                 if (txt != "")
                 {
                     this.showPreter(txt, "top");
@@ -1073,6 +1079,9 @@ public class SphereBehaviour : BaseBehaviour
                 sphere.unit[u_no].Status.def3 = int.Parse(command.Split(new char[] { ' ' })[10]);
                 sphere.unit[u_no].Status.spd = int.Parse(command.Split(new char[] { ' ' })[11]);
                 sphere.unit[u_no].Status.defX = int.Parse(command.Split(new char[] { ' ' })[12]);
+
+                if(Stage.objUnits.units.ContainsKey("unit_" + u_no) && Stage.objUnits.units["unit_" + u_no] != null)
+                    Stage.objUnits.units["unit_" + u_no].setStatus();
 
                 break;
 
@@ -1327,8 +1336,6 @@ public class SphereBehaviour : BaseBehaviour
 
                 // 対象ユニットのムービーへのパスを取得。
                 int _no = int.Parse(command.Split(new char[] { ' ' })[1]);
-
-                string path = "/stage/units/no" + _no;
                 UnitBehaviour _unit = Stage.objUnits.units["unit_" + _no];
 
                 // 指定のエフェクトを再生させる。
@@ -2309,6 +2316,59 @@ public class SphereBehaviour : BaseBehaviour
         // 基底で処理できるなら処理する
         switch (type)
         {
+            // HP回復（サーバ側 SphereCommon::fireGimmick 'hp_recov' 相当）
+            case "hp_recov":
+                {
+                    // 起動したユニットに対して行う（サーバ側と同じ）
+                    if (unit == null)
+                    {
+                        Debug.LogWarning($"hp_recov: unit is null: {gimmick["name"]}");
+                        return false;
+                    }
+
+                    // サーバ側は recoverHp($leads, 500) 固定
+                    int recover = 500;
+                    int maxHp = unit.Status.maxhp;
+                    int newHp = unit.Status.hp + recover;
+                    if (newHp > maxHp) newHp = maxHp;
+
+                    // HPを更新
+                    unit.Status.hp = newHp;
+
+                    // サーバ側と同じ指揮コマンドを生成
+                    // FOCUS %03d
+                    //mitter.lead["lead" + leadIndex] = string.Format("FOCUS {0:D3}", unit.no);
+                    //leadIndex++;
+
+                    // IPRET "HP回復"
+                    mitter.lead["lead" + leadIndex] = "IPRET HP回復";
+                    leadIndex++;
+
+                    // DELAY 300
+                    mitter.lead["lead" + leadIndex] = "DELAY 300";
+                    leadIndex++;
+
+                    // RECOV %03d %d (回復量表示)
+                    mitter.lead["lead" + leadIndex] = string.Format("RECOV {0:D3} {1}", unit.no, recover);
+                    leadIndex++;
+
+                    // UVALS %03d hp %05d (HP値更新)
+                    mitter.lead["lead" + leadIndex] = string.Format("UVALS {0:D3} hp {1:D5}", unit.no, newHp);
+                    leadIndex++;
+
+                    // IPRET (テキストクリア)
+                    mitter.lead["lead" + leadIndex] = "IPRET";
+                    leadIndex++;
+
+                    // chainで呼ばれていない場合のみLead()を呼び出す
+                    if (!isChained)
+                    {
+                        gimmick_call_lead(unit, leadIndex);
+                    }
+
+                    return false;
+                }
+
             // 指揮
             case "lead":
                 // 埋め込みコードを置き換えて、指揮に追加
