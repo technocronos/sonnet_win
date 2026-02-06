@@ -141,8 +141,8 @@ public class RevengeBehaviour : MonoBehaviour
 
                 if (!collunit.death)
                 {
-                    GameObject.Destroy(transform.gameObject);
                     yield return StartCoroutine(collunit.TakeDamage(damage, attacker));
+                    GameObject.Destroy(transform.gameObject);
                 }
 
                 yield return null;
