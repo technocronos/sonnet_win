@@ -123,7 +123,7 @@ public class UserBehaviour : MonoBehaviour
         //チュートリアルが終わってる場合
         if (Header.Instance.GetSummary().tutorial_step >= constants.User_Info_Tutorial.TUTORIAL_END)
         {
-
+            /*
             int TUTORIAL_SPHERE_NEW = PlayerPrefs.GetInt(Settings.TUTORIAL_SPHERE_NEW, 0);
 
             //チュートリアル。ナビをしゃべらせる
@@ -159,6 +159,7 @@ public class UserBehaviour : MonoBehaviour
 
                 });
             }
+            */
         }
         else
         {
@@ -785,6 +786,7 @@ public class UserBehaviour : MonoBehaviour
         objCommBtn.push = "4";
         objCommBtn.onKey();
 
+        /*
         int TUTORIAL_SPHERE_ITM = PlayerPrefs.GetInt(Settings.TUTORIAL_SPHERE_ITM, 0);
 
         //チュートリアル。ナビをしゃべらせる
@@ -811,6 +813,7 @@ public class UserBehaviour : MonoBehaviour
 
             });
         }
+        */
 
     }
 

@@ -406,7 +406,7 @@ class PointR
             {
                 Stage.objMarker.setOneMarker(markerName, x, y, color);
 
-
+                /*
                 int TUTORIAL_SPHERE_ATT = PlayerPrefs.GetInt(Settings.TUTORIAL_SPHERE_ATT, 0);
 
                 //チュートリアル。ナビをしゃべらせる
@@ -437,6 +437,7 @@ class PointR
                         User.flick_lock = false;
                     });
                 }
+                */
 
             }
         }
