@@ -210,7 +210,7 @@ public class StageBehaviour : BaseBehaviour
         //敷物作成
         objOrnaments.Init(transform.Find("orns").GetComponent<OrnamentBehaviour>());
         //ユニット作成
-        StartCoroutine(objUnits.Init(Sphere.units.GetComponent<UnitBehaviour>()));
+        StartCoroutine(objUnits.Init());
         //レンジマーカー作成
         StartCoroutine(objMarker.Init(transform.Find("marker").GetComponent<Image>()));
         //マスエフェクト初期化

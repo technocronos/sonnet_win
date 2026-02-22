@@ -591,8 +591,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Anim: {fileID: 2838263043976967571}
   HP: {fileID: 1360734494671405417}
-  EXP: {fileID: 0}
-  StarDisp: {fileID: 0}
   Revenge: {fileID: 5717081625892332734, guid: 2a257130a50216a4eab99b6d24faaa46, type: 3}
   weapon_slash: {fileID: 7195383470155297723}
   SlashAnim: {fileID: 7869405899216114182}

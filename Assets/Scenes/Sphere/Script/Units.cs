@@ -20,11 +20,11 @@ public class Units
 
     private UnitBehaviour source { get; set; } = null;
 
-    public IEnumerator Init(UnitBehaviour _source)
+    public IEnumerator Init()
     {
         Sphere = SphereBehaviour.Instance;
         Stage = StageBehaviour.Instance;
-        source = _source;
+        source = Resources.Load<UnitBehaviour>("Prefab/Units/units"); ;
 
 
         Debug.Log("Units Start running..");

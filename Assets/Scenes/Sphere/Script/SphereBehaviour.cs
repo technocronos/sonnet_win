@@ -31,7 +31,6 @@ public class SphereBehaviour : BaseBehaviour
     public GameObject InfoW;
     public BteffXBehaviour bteffX;
 
-    public GameObject units;
     public GameObject tip0_0;
     public UeveBehaviour ueve;
     public GameObject cursor;
