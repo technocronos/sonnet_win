@@ -28,8 +28,6 @@ public class SphereBehaviour : BaseBehaviour
     public TextMeshProUGUI StoryText;
     public GameObject StagePanel;
     public GameObject ApDispPanel;
-    public HpBehaviour HPGaugePanel;
-    public ExpDispBehaviour ExpDispPanel;
     public GameObject InfoW;
     public BteffXBehaviour bteffX;
 
@@ -44,6 +42,9 @@ public class SphereBehaviour : BaseBehaviour
 
     public Button raidDisp;
     public TextMeshProUGUI RaidButtonText;
+
+    public ExpDispBehaviour EXP;
+    public StarDispBehaviour StarDisp;
 
     jsonConstants constants;
 

@@ -61,7 +61,6 @@ public class StageBehaviour : BaseBehaviour
     public Dictionary<string, string> no { get; set; } = new Dictionary<string, string>();
     public Dictionary<string, int> cost { get; set; } = new Dictionary<string, int>();
 
-
     public static StageBehaviour Instance
     {
         get
@@ -211,7 +210,7 @@ public class StageBehaviour : BaseBehaviour
         //敷物作成
         objOrnaments.Init(transform.Find("orns").GetComponent<OrnamentBehaviour>());
         //ユニット作成
-        StartCoroutine(objUnits.Init(transform.Find("units").GetComponent<UnitBehaviour>()));
+        StartCoroutine(objUnits.Init(Sphere.units.GetComponent<UnitBehaviour>()));
         //レンジマーカー作成
         StartCoroutine(objMarker.Init(transform.Find("marker").GetComponent<Image>()));
         //マスエフェクト初期化

@@ -13,10 +13,6 @@ public class UnitBehaviour : MonoBehaviour
     [SerializeField]
     private HpBehaviour HP;
     [SerializeField]
-    private ExpDispBehaviour EXP;
-    [SerializeField]
-    private StarDispBehaviour StarDisp;
-    [SerializeField]
     private RevengeBehaviour Revenge;
     [SerializeField]
     private GameObject weapon_slash;
@@ -100,12 +96,12 @@ public class UnitBehaviour : MonoBehaviour
 
         if (unitinfo.code == "avatar")
         {
-            StarDisp.Init();
+            Sphere.StarDisp.Init();
 
             relative_exp = Header.Instance.GetSummary().exp.relative_exp;
             relative_next = Header.Instance.GetSummary().exp.relative_next;
 
-            EXP.show(0, relative_exp, relative_next, unitinfo.Status.level);
+            Sphere.EXP.show(0, relative_exp, relative_next, unitinfo.Status.level);
             movetime = 0.2f;
 
             attack_flg = true;
@@ -468,7 +464,7 @@ public class UnitBehaviour : MonoBehaviour
 
             int damage = (int)battleResult["defender"];
 
-            if (StarDisp.get() >= StarDispBehaviour.RevengeFireCount && unitinfo.Status.hp > 0)
+            if (Sphere.StarDisp.get() >= StarDispBehaviour.RevengeFireCount && unitinfo.Status.hp > 0)
             {
                 StartCoroutine(FireRevenge());
             }
@@ -830,14 +826,14 @@ public class UnitBehaviour : MonoBehaviour
         if (unitinfo.no == playerUnit.no && playerUnit.Status.hp > 0)
         {
 
-            StarDisp.add();
+            Sphere.StarDisp.add();
 
         }
     }
 
     private IEnumerator FireRevenge()
     {
-        int StarCount = StarDisp.get();
+        int StarCount = Sphere.StarDisp.get();
 
         var playerobj = Stage.objUnits.units["unit_" + unitinfo.no];
 
@@ -954,7 +950,7 @@ public class UnitBehaviour : MonoBehaviour
             // 攻撃カードの決定。
             var card = UnityEngine.Random.Range(1, 3);
 
-            StarDisp.use();
+            Sphere.StarDisp.use();
 
             // リベンジオブジェクトを生成
             GameObject revengeObj = Instantiate(Revenge.gameObject, Stage.transform);
@@ -1003,7 +999,7 @@ public class UnitBehaviour : MonoBehaviour
     public void AddExp(int value)
     {
         relative_exp += value;
-        EXP.show(0, relative_exp, relative_next, unitinfo.Status.level);
+        Sphere.EXP.show(0, relative_exp, relative_next, unitinfo.Status.level);
 
         return;
     }
