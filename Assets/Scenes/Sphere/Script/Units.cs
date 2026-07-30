@@ -1,9 +1,7 @@
 ﻿using DG.Tweening;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.Localization.Plugins.XLIFF.V12;
 using UnityEngine;
-using UnityEngine.UI;
 
 //
 // 全ユニットグラフィックを統括するムービー。
@@ -18,18 +16,10 @@ public class Units
 
     public Dictionary<string, UnitBehaviour> units { get; set; } = new Dictionary<string, UnitBehaviour>();
 
-    private UnitBehaviour source { get; set; } = null;
-
     public IEnumerator Init()
     {
         Sphere = SphereBehaviour.Instance;
         Stage = StageBehaviour.Instance;
-        source = Resources.Load<UnitBehaviour>("Prefab/Units/units"); ;
-
-
-        Debug.Log("Units Start running..");
-        // 念のため、コピー元のオリジナルムービーを非表示にしておく。
-        source.gameObject.SetActive(false);
 
         // ユニットを作成＆配置
         for (int no = 1; no <= Sphere.sphere.unitNum; no++)
@@ -53,9 +43,13 @@ public class Units
         // ちゃんと基本情報があるもののみを処理する。
         if (unitinfo != null)
         {
+            dynamic source = Resources.Load<UnitBehaviour>("Prefab/Units/units");
+
+            if (unitinfo.code == "avatar")
+                source = Resources.Load<AvatarUnitBehaviour>("Prefab/Units/avatar_units");
 
             // ユニットムービーを複製
-            UnitBehaviour _unit = UnityEngine.Object.Instantiate(source, new Vector3(0, 0, 0), Quaternion.identity, Stage.transform);
+            var _unit = UnityEngine.Object.Instantiate(source, new Vector3(0, 0, 0), Quaternion.identity, Stage.transform);
             _unit.gameObject.SetActive(true);
 
             _unit.name = "unit_" + no.ToString();

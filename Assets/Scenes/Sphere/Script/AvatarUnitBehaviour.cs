@@ -2,193 +2,36 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
-public class UnitBehaviour : MonoBehaviour
+public class AvatarUnitBehaviour : UnitBehaviour
 {
 
-
     [SerializeField]
-    protected Animator Anim;
+    private RevengeBehaviour Revenge;
     [SerializeField]
-    protected HpBehaviour HP;
+    private GameObject weapon_slash;
     [SerializeField]
-    private ExpPiece expPref;
+    private Animator SlashAnim;
 
-    protected SphereBehaviour Sphere { get; set; }
-    protected StageBehaviour Stage { get; set; }
-    protected UserBehaviour User { get; set; }
+    private bool attack_flg = false;
 
-    //歩行エフェクトを止める
-    public bool walk_stop { get; set; } = false;
-
-    /// <summary>
-    /// マスが75だがunitは72なのでマージンを入れる 
-    /// </summary>
-    protected float margin;
-    protected const float cooldown = 2f;
-
-
-    protected Dictionary<string, Sprite> _sprites { get; set; } = new Dictionary<string, Sprite>();
-    protected int _count = 0;
-
-    //向きの種類　上下左右で4種類
-    const int align_num = 4;
-    //向きごとのコマ数
-    const int align_flame = 2;
-
-    protected float movetime = 0.2f;
-
-    public bool commandkeyrecv { get; set; } = true;
-    public bool death { get; set; } = false;
-
-    protected int graphAlign { get; set; } = 0;
-
-    protected Transform AvatarImage;
-
-    protected float moverate = 0.5f;
-
-    protected string UnitName = "";
-    protected float X = 0f;
-    protected float Y= 0f;
-
-    protected int no = -1;
-    public jsonUnit unitinfo = new jsonUnit();
-
-    public Tween currentMoveTween { get; set; } = null;
-    public bool wasStopped = false;
-
-    protected int relative_exp = 0;
-    protected int relative_next = 0;
-
-    public void Init(jsonUnit _unitinfo)
+    protected override void ReadyUnit()
     {
-        Sphere = SphereBehaviour.Instance;
-        Stage = StageBehaviour.Instance;
-        User = UserBehaviour.Instance;
+        weapon_slash.SetActive(false);
 
-        unitinfo = _unitinfo;
-        no = int.Parse(transform.name.Split('_')[1]);
-        unitinfo.no = no;
+        Sphere.StarDisp.Init();
 
-        margin = (Sphere.TIP_SIZE - Sphere.UNIT_SIZE) / 2;
+        relative_exp = Header.Instance.GetSummary().exp.relative_exp;
+        relative_next = Header.Instance.GetSummary().exp.relative_next;
 
-        AvatarImage = transform.Find("Avatar");
+        Sphere.EXP.show(0, relative_exp, relative_next, unitinfo.Status.level);
+        movetime = 0.2f;
 
-        //画像を読み込んでおく
-        for (int i = 0; i < align_num; i++)
-        {
-            for (int j = 1; j <= align_flame; j++)
-            {
-                _sprites[i + "_" + j] = Utility.getAssetImage("Image/UnitTip/" + Sphere.sphere.unitIcon[unitinfo.Info.graphNo] + "_" + i + "_" + j);
-            }
-        }
-
-        HP.show(no);
-        ReadyUnit();
-
-        // Coroutineをとりあえず動かしておく。
-        StartCoroutine(this.walk());
+        attack_flg = true;
+        StartCoroutine(SlashAttack());
     }
 
-    virtual protected void ReadyUnit()
-    {
-        movetime = 0.4f * 2;
-        unitinfo.Info.cost = 20;//一旦書き換え
-    }
-
-    private void FixedUpdate()
-    {
-        try {
-            if (Sphere.gamestate.is_gamestart && !Sphere.gamestate.is_gameover)
-            {
-                // 物理演算で移動した位置を unitinfo に反映
-                // DOTween で移動中でない場合のみ補正
-                if (currentMoveTween == null || !currentMoveTween.IsActive())
-                {
-                    // transform.localPosition から unitinfo.X, unitinfo.Y を逆算
-                    Vector3 currentPos = transform.localPosition;
-                    float expectedX = unitinfo.X * Sphere.TIP_SIZE + margin;
-                    float expectedY = (unitinfo.Y * Sphere.TIP_SIZE + margin) * -1;
-
-                    // 物理演算で移動した分を計算（閾値は TIP_SIZE の 10% 以上）
-                    float threshold = Sphere.TIP_SIZE * 0.1f;
-                    float diffX = currentPos.x - expectedX;
-                    float diffY = currentPos.y - expectedY;
-
-                    if (Mathf.Abs(diffX) > threshold || Mathf.Abs(diffY) > threshold)
-                    {
-                        // 物理演算で移動した分を unitinfo に反映
-                        float newX = (currentPos.x - margin) / Sphere.TIP_SIZE;
-                        float newY = ((currentPos.y * -1) - margin) / Sphere.TIP_SIZE;
-
-                        // 0.5刻みにスナップ（moverate=0.5 前提）
-                        newX = Mathf.Round(newX * 2f) / 2f;
-                        newY = Mathf.Round(newY * 2f) / 2f;
-
-                        // コスト9999のマップチップに入っていないかチェック
-                        int costX1 = GetCost(Mathf.FloorToInt(newX), Mathf.CeilToInt(newY));
-                        int costX2 = GetCost(Mathf.CeilToInt(newX), Mathf.CeilToInt(newY));
-                        int costY1 = GetCost(Mathf.CeilToInt(newX), Mathf.FloorToInt(newY));
-                        int costY2 = GetCost(Mathf.CeilToInt(newX), Mathf.CeilToInt(newY));
-                        int maxCost = Mathf.Max(costX1, costX2, costY1, costY2);
-
-                        // コスト9999のマップチップに入っている場合は、前の位置に戻すか、最も近い通れるマップチップに移動
-                        if (maxCost >= 9990)
-                        {
-                            // 前の位置（expectedX, expectedYから計算）に戻す
-                            float safeX = (expectedX - margin) / Sphere.TIP_SIZE;
-                            float safeY = ((expectedY * -1) - margin) / Sphere.TIP_SIZE;
-                            safeX = Mathf.Round(safeX * 2f) / 2f;
-                            safeY = Mathf.Round(safeY * 2f) / 2f;
-
-                            // 前の位置もコスト9999の場合は、最も近い通れるマップチップを探す
-                            int safeCostX1 = GetCost(Mathf.FloorToInt(safeX), Mathf.CeilToInt(safeY));
-                            int safeCostX2 = GetCost(Mathf.CeilToInt(safeX), Mathf.CeilToInt(safeY));
-                            int safeCostY1 = GetCost(Mathf.CeilToInt(safeX), Mathf.FloorToInt(safeY));
-                            int safeCostY2 = GetCost(Mathf.CeilToInt(safeX), Mathf.CeilToInt(safeY));
-                            int safeMaxCost = Mathf.Max(safeCostX1, safeCostX2, safeCostY1, safeCostY2);
-
-                            if (safeMaxCost >= 9990)
-                            {
-                                // 最も近い通れるマップチップを探す
-                                float[] nearestWalkable = FindNearestWalkableTile(newX, newY);
-                                if (nearestWalkable != null)
-                                {
-                                    newX = nearestWalkable[0];
-                                    newY = nearestWalkable[1];
-                                }
-                                else
-                                {
-                                    // 見つからない場合は前の位置を維持
-                                    return;
-                                }
-                            }
-                            else
-                            {
-                                // 前の位置が安全な場合は前の位置に戻す
-                                newX = safeX;
-                                newY = safeY;
-                            }
-
-                            // 物理位置も補正
-                            Vector3 safePos = new Vector3(newX * Sphere.TIP_SIZE + margin, (newY * Sphere.TIP_SIZE + margin) * -1, 0);
-                            transform.localPosition = safePos;
-                        }
-
-                        // 安全な位置を unitinfo に反映
-                        unitinfo.X = newX;
-                        unitinfo.Y = newY;
-                    }
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            return;
-        }
-    }
 
     private void Update()
     {
@@ -298,89 +141,6 @@ public class UnitBehaviour : MonoBehaviour
                         }
                     }
                 }
-                else if (unitinfo.act_brain == "generic")
-                {
-                    var targetunit = Sphere.getUnitByCode("avatar");
-                    if (targetunit != null)
-                    {
-                        var myPos = new int[] { (int)unitinfo.X, (int)unitinfo.Y };
-                        var targetPos = new int[] { (int)targetunit.X, (int)targetunit.Y };
-                        int distance = GetManhattanDist(myPos, targetPos);
-
-                        // 最低限のマス以内に到達したら、プレイヤーの位置を直接目標にして体当たり
-                        if (distance <= (unitinfo.Info.cost / 10))
-                        {
-                            // プレイヤーの位置に向かって1マス進む
-                            int[] nextPos = GetNextStepToTarget(myPos, targetPos);
-                            if (nextPos != null)
-                            {
-                                // 向きを設定
-                                if (nextPos[0] > myPos[0]) this.setAlign(2); // 右
-                                else if (nextPos[0] < myPos[0]) this.setAlign(1); // 左
-                                else if (nextPos[1] > myPos[1]) this.setAlign(0); // 下
-                                else if (nextPos[1] < myPos[1]) this.setAlign(3); // 上
-
-                                // 整数座標で1マス移動（moverateを使わない）
-                                unitinfo.X = nextPos[0];
-                                unitinfo.Y = nextPos[1];
-
-                                this.setPos(true);
-                            }
-                        }
-                        else
-                        {
-                            // 攻撃できるマスより遠い場合は、サーバー側の generic ブレインロジック: thinkApproach('nearest')
-                            var command = ThinkApproachNearest();
-                            if (command != null)
-                            {
-                                // 移動コマンドを実行
-                                if (command.ContainsKey("move"))
-                                {
-                                    var move = command["move"] as Dictionary<string, object>;
-                                    var to = move["to"] as int[];
-                                    var path = move["path"] as string;
-
-                                    // 経路の最初の1マスだけ進む（移動可能範囲内で）
-                                    if (path != null && path.Length > 0)
-                                    {
-                                        var currentPos = new int[] { (int)unitinfo.X, (int)unitinfo.Y };
-                                        var nextPos = WalkPath(currentPos, path, 1);
-                                        if (nextPos != null)
-                                        {
-                                            // 向きを設定（移動前の位置から移動後の位置へ）
-                                            if (nextPos[0] > currentPos[0]) this.setAlign(2); // 右
-                                            else if (nextPos[0] < currentPos[0]) this.setAlign(1); // 左
-                                            else if (nextPos[1] > currentPos[1]) this.setAlign(0); // 下
-                                            else if (nextPos[1] < currentPos[1]) this.setAlign(3); // 上
-
-                                            // 整数座標で1マス移動（moverateを使わない）
-                                            unitinfo.X = nextPos[0];
-                                            unitinfo.Y = nextPos[1];
-
-                                            this.setPos(true);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                else if (unitinfo.act_brain == "rest")
-                {
-                    var targetunit = Sphere.getUnitByCode("avatar");
-                    if (targetunit != null)
-                    {
-                        var myPos = new int[] { (int)unitinfo.X, (int)unitinfo.Y };
-                        var targetPos = new int[] { (int)targetunit.X, (int)targetunit.Y };
-                        int distance = GetManhattanDist(myPos, targetPos);
-
-                        if (distance <= 4)
-                        {
-                            unitinfo.act_brain = "generic";
-                        }
-
-                    }
-                }
             }
         }
         catch (Exception e)
@@ -390,25 +150,41 @@ public class UnitBehaviour : MonoBehaviour
 
     }
 
-    private void OnCollisionEnter2D(Collision2D collision)
+    public override void setAlign(int _graphAlign)
     {
-        OnCollisionOrTrigger(collision.gameObject);
+        base.setAlign(_graphAlign);
+
+        switch (_graphAlign)
+        {
+            case 0:
+                weapon_slash.transform.rotation = Quaternion.Euler(0, 0, 90);
+                weapon_slash.transform.localPosition = new Vector3(53f, -146, 0);
+                break;
+            case 1:
+                weapon_slash.transform.rotation = Quaternion.Euler(0, 0, 0);
+                weapon_slash.transform.localPosition = new Vector3(-93f, -46f, 0);
+                break;
+            case 2:
+                weapon_slash.transform.rotation = Quaternion.Euler(0, 180, 0);
+                weapon_slash.transform.localPosition = new Vector3(172f, -46f, 0);
+                break;
+            case 3:
+                weapon_slash.transform.rotation = Quaternion.Euler(0, 0, -90);
+                weapon_slash.transform.localPosition = new Vector3(53f, 35f, 0);
+                break;
+        }
     }
 
-    private void OnTriggerEnter2D(Collider2D collision)//一旦isTriggerになっている敵もOnCollisionと同じ効果にする
-    {
-        OnCollisionOrTrigger(collision.gameObject);
-    }
-
-    virtual protected void OnCollisionOrTrigger(GameObject collision)
+    protected override void OnCollisionOrTrigger(GameObject collision)
     {
         try
         {
-            if (collision.transform.name.Contains("weapon_") && transform.name.Contains("unit_"))
+            if (collision.transform.name.Contains("unit_") && transform.name.Contains("unit_"))
             {
-                if (unitinfo.code != "avatar")
+                if (unitinfo.code == "avatar")
                 {
-                    jsonUnit colunitinfo = Sphere.getUnitByCode("avatar");
+                    int colno = int.Parse(collision.transform.name.Split('_')[1]);
+                    jsonUnit colunitinfo = Sphere.sphere.unit[colno];
 
                     StartCoroutine(CalcDamage(colunitinfo));
                 }
@@ -420,32 +196,7 @@ public class UnitBehaviour : MonoBehaviour
         }
     }
 
-    public void setStatus()
-    {
-        HP.show(unitinfo.no);
-    }
-
-    protected IEnumerator CalcDamage(jsonUnit emeny)
-    {
-        //unionが違う場合のみダメージを与える
-        if (emeny.Info.union != unitinfo.Info.union)
-        {
-            if (unitinfo.Status.hp <= 0 || emeny.Status.hp <= 0) yield break;
-
-            var battleResult = omissionBattle(emeny, unitinfo);
-
-            int damage = (int)battleResult["defender"];
-
-            if (Sphere.StarDisp.get() >= StarDispBehaviour.RevengeFireCount && unitinfo.Status.hp > 0)
-            {
-                StartCoroutine(FireRevenge());
-            }
-
-            yield return StartCoroutine(TakeDamage(damage, emeny));
-        }
-    }
-
-    virtual public IEnumerator TakeDamage(int damage, jsonUnit emeny)
+    public override IEnumerator TakeDamage(int damage, jsonUnit emeny)
     {
         death = false;
         if (unitinfo.Status.hp - damage <= 0)
@@ -504,248 +255,30 @@ public class UnitBehaviour : MonoBehaviour
             StartCoroutine(setEffects("dam"));
         }
     }
-    IEnumerator wait_effec()
+
+    public IEnumerator SlashAttack()
     {
-        while (this.walk_stop)
-        {
-            Debug.Log("wait_effec run...");
-            yield return null;
-        }
-
-        Debug.Log("wait_effec end...");
-    }
-
-    //
-    // 変数 no で示されたユニットの位置情報を参照して、そのユニットのムービーの
-    // 表示座標を変更する。
-    virtual public void setAlign(int _graphAlign)
-    {
-        //向きを更新する
-        this.graphAlign = _graphAlign;
-        //コルーチンとタイミング合わない時があるのでひとまず変えておく
-        ParticleSystemRenderer avatar_renderer = AvatarImage.GetComponent<ParticleSystemRenderer>();
-        avatar_renderer.material.SetTexture("_MainTex", _sprites[this.graphAlign + "_1"].texture);
-
-    }
-
-    IEnumerator walk()
-    {
-
-        int _frame = align_flame;
-
         while (true)
         {
-            //0.5秒に一回
-            yield return new WaitForSeconds(0.5f);
-
-            if (!walk_stop || !Sphere.gamestate.is_stop)
+            if (attack_flg && !Sphere.gamestate.is_stop && Sphere.gamestate.is_gamestart)
             {
-                if (_count >= _frame)
-                    _count = 0;
+                weapon_slash.SetActive(true);
 
-                string _flame = (_count + 1).ToString();
-                ParticleSystemRenderer avatar_renderer = AvatarImage.GetComponent<ParticleSystemRenderer>();
-                avatar_renderer.material.SetTexture("_MainTex", _sprites[this.graphAlign + "_" + _flame].texture);
-                _count++;
-            }
-        }
-    }
+                var _attack_name = "Slash";
 
-    public void setPos(bool move = false, float _movetime = 0)
-    {
-        if (_movetime == 0) _movetime = movetime;
+                int hashAnim = Animator.StringToHash(_attack_name);
+                AudioManager.Instance.PlaySE("se_slashblade");
+                SlashAnim.Play(hashAnim);
 
-        int no = int.Parse(transform.name.Split('_')[1]);
+                yield return null;
+                yield return new WaitForAnimation(SlashAnim, 0);
 
-        jsonUnit unitinfo = Sphere.sphere.unit[no];
-
-        Vector3 vector = new Vector3(unitinfo.X * Sphere.TIP_SIZE + margin, (unitinfo.Y * Sphere.TIP_SIZE + margin) * -1, 0);
-
-        if (move)
-        {
-            commandkeyrecv = false;
-            wasStopped = false;
-
-            // 既存の tween があれば破棄
-            if (currentMoveTween != null && currentMoveTween.IsActive())
-            {
-                currentMoveTween.Kill();
+                Anim.SetBool(_attack_name, false);
+                weapon_slash.SetActive(false);
             }
 
-            currentMoveTween = transform.DOLocalMove(vector, _movetime).SetEase(Ease.Linear);
-            currentMoveTween.OnComplete(() =>
-            {
-                if (!death)
-                {
-                    commandkeyrecv = true;
-                }
-
-                currentMoveTween = null;
-                wasStopped = false;
-            });
+            yield return new WaitForSeconds(cooldown);
         }
-        else
-        {
-            transform.localPosition = vector;
-        }
-
-        if(unitinfo.code == "avatar")
-        {
-            Stage.moveX = unitinfo.X;
-            Stage.moveY = unitinfo.Y;
-            Stage.moveCsr(false);
-        }
-
-    }
-
-
-    public void UnitEvent(int targetNo, string effType, int value)
-    {
-        UeveBehaviour _ueve = UnityEngine.Object.Instantiate(Sphere.ueve, new Vector3(0, 0, 0), Quaternion.identity, Stage.transform);
-        _ueve.transform.localPosition = new Vector3(0, 0, 0);
-
-        _ueve.Play(targetNo, effType, value.ToString());
-    }
-
-    /// <summary>
-    /// recov
-    /// damag
-    /// collap
-    /// </summary>
-    /// <param name="_effectName"></param>
-    public IEnumerator setEffects(string _effectName)
-    {
-        Debug.Log("UnitBehaviour setEffects run.. _effectName=" + _effectName);
-
-        //エフェクト中は歩かない
-        this.walk_stop = true;
-        isCancelled = false;
-        int hashAnim = Animator.StringToHash(_effectName);
-
-        //サウンド再生。
-        switch (_effectName)
-        {
-            case "dam":
-                AudioManager.Instance.PlaySE("se_hit");
-                break;
-            case "collap":
-                HP.hide();
-                Anim.Play(hashAnim);
-                AudioManager.Instance.PlaySE("se_explosionshort");
-                break;
-            case "recov":
-                AudioManager.Instance.PlaySE("se_repair");
-                Anim.Play(hashAnim);
-                break;
-        }
-
-        Anim.SetBool(_effectName, true);
-
-        // アニメーションが実際に開始されるまで1フレーム待つ
-        yield return null;
-        yield return new WaitForAnimation(Anim, 0);
-
-        walk_stop = false;
-        Anim.SetBool(_effectName, false);
-
-    }
-
-    bool isCancelled = false;
-    // 他の場所でキャンセルしたい場合
-    public void CancelAnimation()
-    {
-        isCancelled = true;
-    }
-
-    protected void UnitRemove()
-    {
-        // 無効なユニットである場合はX座標上での位置でそれを示す
-        unitinfo.X = -1;
-
-        GameObject.Destroy(transform.gameObject);
-    }
-
-    public double getSpeedBalance(jsonUnit sideP, jsonUnit sideE)
-    {
-        // バランス1.0となるスピード差を求める。
-        // 10 の [両者の平均Lv * 3]% 増し。
-        var speedWidth = 10 * (1.0 + (sideP.Status.level + sideE.Status.level / 2 * 0.03));
-
-        // スピードバランスの計算。
-        var result = (sideP.Status.spd - sideE.Status.spd) / speedWidth;
-
-        // +1.0 ～ -1.0 に補正する。
-        if (result > 1.0)
-            result = 1.0;
-        else if (result < -1.0) 
-            result = -1.0;
-
-        // リターン。
-        return result;
-    }
-
-
-    private Dictionary<string, float> omissionBattle(jsonUnit challenger, jsonUnit defender)
-    {
-        // スピードバランスを取得。
-        double speedBalance = getSpeedBalance(challenger, defender);
-
-        // リベンジカウント
-        Dictionary<string, int> star = new Dictionary<string, int>();
-
-        star.Add("challenger", 0);
-        star.Add("defender", 0);
-
-        // ダメージ初期化。
-        Dictionary<string, float> result = new Dictionary<string, float>();
-        result.Add("challenger", 0);
-        result.Add("defender", 0);
-
-        // ノーマルダメージの計算。規定回数繰り返す。
-        for (int i = 0; i < 10; i++)
-        {
-            // 両者の攻撃カードの決定。
-            Dictionary<string, int> card = new Dictionary<string, int>();
-            card.Add("challenger", UnityEngine.Random.Range(1, 3));
-            card.Add("defender", UnityEngine.Random.Range(1, 3));
-
-            // 攻め側⇒受け側の順で処理する。
-            for (int side = 0; side < 2; side++)
-            {
-                var attackerinfo = side == 1 ? defender : challenger;
-                var defencerinfo = side == 1 ? challenger : defender;
-
-                string attacker = side == 1 ? "defender" : "challenger";
-                string defencer = side == 1 ? "challenger" : "defender";
-
-                // ダメージ計算。
-                float damage = calcNormalDamage(
-                    attackerinfo, card[attacker], defencerinfo, card[defencer], speedBalance * (side == 1 ? -1 : +1)
-                );
-
-                // スターに変換されたならスターカウントを、ダメージになったならダメージをアップ。
-                if (damage == -1) { 
-                    star[attacker]++;
-                    AddStar(challenger.no);
-                }
-                else if (damage == -2) 
-                { 
-                    star[defencer]++;
-                    AddStar(defender.no);
-                }
-                else
-                {
-                    result[defencer] += damage;
-                }
-            }
-
-            // ダメージがHPを上回ったならそこでストップ。
-            if (challenger.Status.hp <= result["challenger"] || defender.Status.hp <= result["defender"])
-                break;
-        }
-
-        // リターン。
-        return result;
     }
 
     private void AddStar(int unitNo)
@@ -760,39 +293,155 @@ public class UnitBehaviour : MonoBehaviour
         }
     }
 
-    virtual protected IEnumerator FireRevenge()
+    protected override IEnumerator FireRevenge()
     {
-        yield break;
-    }
+        int StarCount = Sphere.StarDisp.get();
 
-    public void DropExp(int amount)
-    {
-        var count = amount / expPref.GetExpAmount();
-        var playerUnit = Sphere.getUnitByCode("avatar");
-        var playerobj = Stage.objUnits.units["unit_" + playerUnit.no];
+        var playerobj = Stage.objUnits.units["unit_" + unitinfo.no];
 
-        var pos = transform.localPosition;
+        // リベンジオブジェクトの総数（スター数）
+        int totalRevengeCount = (int) Mathf.Floor(StarCount / StarDispBehaviour.RevengeConsumeStar);
 
-        for (int i = 0; i < count; i++)
+        var txt = "リベンジ発動！！";
+        Sphere.showPreter(txt, "top");
+        StartCoroutine(setEffects("recov"));
+
+
+        // リベンジオブジェクトの回転半径（RevengeBehaviour.csと同じ値）
+        float revengeRadius = Sphere.TIP_SIZE * 0.8f;
+        // 退避距離（回転半径より少し外側）
+        float retreatDistance = Sphere.TIP_SIZE * 1.5f;
+
+        // プレイヤーの位置を取得
+        Vector3 playerPos = playerobj.transform.localPosition;
+        float playerCenterX = playerPos.x + Sphere.UNIT_SIZE * 0.5f;
+        float playerCenterY = playerPos.y - Sphere.UNIT_SIZE * 0.5f;
+
+        // プレイヤー近くの敵を検出して退避させる
+        List<Dictionary<string, object>> retreatingEnemies = new List<Dictionary<string, object>>();
+
+        bool escape_flg = false;
+
+        foreach (var kvp in Sphere.sphere.unit)
         {
-            // ランダムオフセットを追加
-            float offsetX = UnityEngine.Random.Range(-30f, 30f);
-            float offsetY = UnityEngine.Random.Range(-30f, 30f);
+            var enemyUnit = kvp.Value;
+            // プレイヤー自身や既に倒れた敵はスキップ
+            if (enemyUnit.code == "avatar" || enemyUnit.X < 0)
+                continue;
+            
+            // 同じ所属（味方）はスキップ
+            if (enemyUnit.Info.union == unitinfo.Info.union)
+                continue;
 
-            var offset = new Vector3(offsetX, offsetY, 0);
+            // 敵のUnitBehaviourを取得
+            string enemyKey = "unit_" + enemyUnit.no;
+            if (!Stage.objUnits.units.ContainsKey(enemyKey))
+                continue;
+            
+            var enemyObj = Stage.objUnits.units[enemyKey];
+            Vector3 enemyPos = enemyObj.transform.localPosition;
+            float enemyCenterX = enemyPos.x + Sphere.UNIT_SIZE * 0.5f;
+            float enemyCenterY = enemyPos.y - Sphere.UNIT_SIZE * 0.5f;
 
-            var expPiece = Instantiate(expPref, Stage.transform);
-            expPiece.Setup(playerobj, pos + offset);
+            // プレイヤーからの距離を計算
+            float distanceX = enemyCenterX - playerCenterX;
+            float distanceY = enemyCenterY - playerCenterY;
+            float distance = Mathf.Sqrt(distanceX * distanceX + distanceY * distanceY);
+
+            // リベンジオブジェクトの回転半径より近い場合は退避させる
+            if (distance < revengeRadius)
+            {
+                escape_flg = true;
+
+                // 退避先の位置を計算（プレイヤーから離れる方向）
+                float angle = Mathf.Atan2(distanceY, distanceX);
+                float retreatX = playerCenterX + Mathf.Cos(angle) * retreatDistance;
+                float retreatY = playerCenterY + Mathf.Sin(angle) * retreatDistance;
+
+                // 退避先の座標をマップ座標に変換
+                float retreatMapX = (retreatX - Sphere.UNIT_SIZE * 0.5f) / Sphere.TIP_SIZE;
+                float retreatMapY = ((retreatY + Sphere.UNIT_SIZE * 0.5f) * -1) / Sphere.TIP_SIZE;
+
+                // 0.5刻みにスナップ
+                retreatMapX = Mathf.Round(retreatMapX * 2f) / 2f;
+                retreatMapY = Mathf.Round(retreatMapY * 2f) / 2f;
+
+                // 敵を退避先に移動
+                enemyUnit.X = retreatMapX;
+                enemyUnit.Y = retreatMapY;
+                //enemyObj.setPos(true);
+
+                enemyObj.commandkeyrecv = false;
+                enemyObj.wasStopped = false;
+
+                if (enemyObj.currentMoveTween != null && enemyObj.currentMoveTween.IsActive())
+                {
+                    enemyObj.currentMoveTween.Kill();
+                }
+
+                Vector3 enemyUnitVector = new Vector3(enemyUnit.X * Sphere.TIP_SIZE + margin, (enemyUnit.Y * Sphere.TIP_SIZE + margin) * -1, 0);
+                enemyObj.currentMoveTween = enemyObj.transform.DOLocalMove(enemyUnitVector, movetime / 3).SetEase(Ease.Linear);
+                enemyObj.currentMoveTween.OnComplete(() =>
+                {
+                    if (!enemyObj.death)
+                    {
+                        enemyObj.commandkeyrecv = true;
+                    }
+
+                    enemyObj.currentMoveTween = null;
+                    enemyObj.wasStopped = false;
+
+                    escape_flg = false;
+                });
+
+            }
         }
+
+        while (escape_flg)
+        {
+            yield return null;
+        }
+
+        Debug.Log("退避完了");
+
+        Sphere.gamestate.is_stop = true;
+
+
+        for (int i = 0; i < totalRevengeCount; i++)
+        {
+            // 攻撃カードの決定。
+            var card = UnityEngine.Random.Range(1, 3);
+
+            Sphere.StarDisp.use();
+
+            // リベンジオブジェクトを生成
+            GameObject revengeObj = Instantiate(Revenge.gameObject, Stage.transform);
+            RevengeBehaviour revengeBehaviour = revengeObj.GetComponent<RevengeBehaviour>();
+            if (revengeBehaviour != null)
+            {
+                // 各リベンジオブジェクトにインデックスと総数を渡して均等に分散させる
+                revengeBehaviour.init(playerobj, card, i, totalRevengeCount);
+            }
+        }
+        Debug.Log("revenge ready");
+        yield return new WaitForSeconds(0.5f);
+
+        Sphere.Preter.SetActive(false);
+        Sphere.gamestate.is_stop = false;
+
     }
 
-    virtual public void DespawnExp(ExpPiece exp)
+    public override void DespawnExp(ExpPiece exp)
     {
-        return;
+        exp.gameObject.SetActive(false);
+        GameObject.Destroy(exp.gameObject);
     }
 
-    virtual public void AddExp(int value)
+    public override void AddExp(int value)
     {
+        relative_exp += value;
+        Sphere.EXP.show(0, relative_exp, relative_next, unitinfo.Status.level);
+
         return;
     }
 
