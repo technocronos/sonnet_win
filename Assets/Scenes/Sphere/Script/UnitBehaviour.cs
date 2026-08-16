@@ -6,6 +6,8 @@ using UnityEngine.UI;
 
 public class UnitBehaviour : MonoBehaviour
 {
+    private const float ENEMY_BREATHING_AMPLITUDE = 3.0f;
+    private const float ENEMY_BREATHING_PERIOD = 2.6f;
 
     public Animator Anim;
 
@@ -30,6 +32,11 @@ public class UnitBehaviour : MonoBehaviour
     private int graphAlign { get; set; } = 0;
 
     Transform AvatarImage;
+    Vector3 avatarBaseLocalPosition;
+    float enemyBreathingPhase;
+    int unitNo;
+    bool enemyClassificationResolved;
+    bool isEnemy;
 
     public void Init()
     {
@@ -39,6 +46,14 @@ public class UnitBehaviour : MonoBehaviour
         margin = (Sphere.TIP_SIZE - Sphere.UNIT_SIZE) / 2;
 
         AvatarImage = transform.Find("Avatar");
+        avatarBaseLocalPosition = AvatarImage.localPosition;
+
+        string[] nameParts = transform.name.Split('_');
+        if (nameParts.Length > 1)
+        {
+            int.TryParse(nameParts[1], out unitNo);
+        }
+        enemyBreathingPhase = Mathf.Repeat(unitNo * 1.6180339f, Mathf.PI * 2.0f);
 
         //画像を読み込んでおく
         for (int i = 0; i < align_num; i++)
@@ -51,6 +66,56 @@ public class UnitBehaviour : MonoBehaviour
 
         // Coroutineをとりあえず動かしておく。
         StartCoroutine(this.anim());
+    }
+
+    void LateUpdate()
+    {
+        if (AvatarImage == null || Sphere == null) return;
+        if (!enemyClassificationResolved && !resolveEnemyClassification()) return;
+
+        if (!isEnemy || stop)
+        {
+            AvatarImage.localPosition = avatarBaseLocalPosition;
+            return;
+        }
+
+        Vector3 visualPosition = avatarBaseLocalPosition;
+        float angle = Time.unscaledTime / ENEMY_BREATHING_PERIOD * Mathf.PI * 2.0f + enemyBreathingPhase;
+        visualPosition.y += Mathf.Sin(angle) * ENEMY_BREATHING_AMPLITUDE;
+        AvatarImage.localPosition = visualPosition;
+    }
+
+    bool resolveEnemyClassification()
+    {
+        int playerUnitNo = Sphere.leader.commUnit;
+        if (playerUnitNo <= 0 || unitNo <= 0) return false;
+        if (!Sphere.sphere.unit.ContainsKey(playerUnitNo) || !Sphere.sphere.unit.ContainsKey(unitNo)) return false;
+
+        int playerUnion;
+        int ownUnion;
+        if (!tryGetUnion(Sphere.sphere.unit[playerUnitNo], out playerUnion)) return false;
+        if (!tryGetUnion(Sphere.sphere.unit[unitNo], out ownUnion)) return false;
+
+        isEnemy = ownUnion != playerUnion;
+        enemyClassificationResolved = true;
+        return true;
+    }
+
+    bool tryGetUnion(jsonUnit unit, out int union)
+    {
+        union = 0;
+        if (unit == null || string.IsNullOrEmpty(unit.Info)) return false;
+
+        string[] unitInfo = unit.Info.Split(' ');
+        return unitInfo.Length > 1 && int.TryParse(unitInfo[1], out union);
+    }
+
+    void OnDisable()
+    {
+        if (AvatarImage != null)
+        {
+            AvatarImage.localPosition = avatarBaseLocalPosition;
+        }
     }
 
 
