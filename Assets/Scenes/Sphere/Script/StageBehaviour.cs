@@ -72,6 +72,8 @@ public class StageBehaviour : BaseBehaviour
     private static StageBehaviour instance;
     public Image _cursor { get; set; } = null;
     TouchManager _touch_manager { get; set; } = null;
+    private RectTransform _stage_rect { get; set; }
+    private Camera _event_camera { get; set; }
 
     // Start is called before the first frame update
     protected override void Start()
@@ -89,7 +91,48 @@ public class StageBehaviour : BaseBehaviour
         // タッチ管理マネージャ生成
         this._touch_manager = new TouchManager();
 
+        _stage_rect = transform as RectTransform;
+        if (_stage_rect != null)
+        {
+            Canvas stageCanvas = _stage_rect.GetComponentInParent<Canvas>();
+            Canvas rootCanvas = stageCanvas == null ? null : stageCanvas.rootCanvas;
+            _event_camera = rootCanvas == null || rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : rootCanvas.worldCamera;
+        }
+
         _cursor = transform.Find("cursor").GetComponent<Image>();
+    }
+
+    private void OnRectTransformDimensionsChange()
+    {
+        if (_stage_rect == null)
+            _stage_rect = transform as RectTransform;
+
+        if (_stage_rect == null)
+            return;
+
+        SphereBehaviour sphere = Sphere ?? SphereBehaviour.Instance;
+        if (sphere != null)
+        {
+            sphere.STAGE_WID = _stage_rect.rect.width;
+            sphere.STAGE_HEI = _stage_rect.rect.height;
+        }
+    }
+
+    private bool TryGetStagePosition(Vector2 screenPosition, out Vector2 stagePosition)
+    {
+        stagePosition = Vector2.zero;
+
+        if (_stage_rect == null)
+            return false;
+
+        Vector2 localPosition;
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_stage_rect, screenPosition, _event_camera, out localPosition))
+            return false;
+
+        Rect rect = _stage_rect.rect;
+        stagePosition.x = localPosition.x - rect.xMin;
+        stagePosition.y = rect.yMax - localPosition.y;
+        return true;
     }
 
     private float touchstartX { get; set; }
@@ -259,6 +302,7 @@ public class StageBehaviour : BaseBehaviour
     void FixedUpdate()
     {
         if (!act_start) return;
+        if (Sphere != null && Sphere.IsPcFreeMovement) return;
 
         if (User.flick_flg == false)
         {
@@ -324,6 +368,7 @@ public class StageBehaviour : BaseBehaviour
     private void Update()
     {
         if (User == null) return;
+        if (Sphere != null && Sphere.IsPcFreeMovement) return;
         if (User.objPointR == null) return;
 
         // タッチ状態更新
@@ -337,8 +382,11 @@ public class StageBehaviour : BaseBehaviour
         {
             //Debug.Log("touch ok.. x=" + touch_state._touch_position.x + " y=" + touch_state._touch_position.y);
 
-            float touch_x = (touch_state._touch_position.x) / Screen.width * transform.GetComponent<RectTransform>().rect.width;
-            float touch_y = ((touch_state._touch_position.y - Screen.height) / Screen.height * transform.GetComponent<RectTransform>().rect.height) * -1;
+            Vector2 stagePosition;
+            if (!TryGetStagePosition(touch_state._touch_position, out stagePosition)) return;
+
+            float touch_x = stagePosition.x;
+            float touch_y = stagePosition.y;
 
             //Debug.Log("touch_info.. x=" + touch_x + " y=" + touch_y);
 
@@ -367,8 +415,8 @@ public class StageBehaviour : BaseBehaviour
                 //flick_lockがかかってる場合はリターン
                 if (User.flick_lock) return;
 
-                var touchX = _x + ((touch_x - touchstartX) * (Sphere.STAGE_WID / transform.GetComponent<RectTransform>().rect.width));
-                var touchY = _y + ((touch_y - touchstartY) * (Sphere.STAGE_WID / transform.GetComponent<RectTransform>().rect.width));
+                var touchX = _x + (touch_x - touchstartX);
+                var touchY = _y + (touch_y - touchstartY);
 
                 //右に進んでいる場合
                 if (this._touchX > touchX)

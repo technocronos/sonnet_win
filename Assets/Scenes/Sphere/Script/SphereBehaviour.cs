@@ -12,6 +12,28 @@ using DG.Tweening;
 public class SphereBehaviour : BaseBehaviour
 {
 
+    [Header("PC Free Movement")]
+    [SerializeField]
+    [Tooltip("ONにすると従来の地点選択操作とSphere AP消費を使用します。")]
+    private bool useLegacyMap = false;
+
+    public bool UseLegacyMap
+    {
+        get { return useLegacyMap; }
+    }
+
+    public bool IsPcFreeMovement
+    {
+        get
+        {
+#if UNITY_EDITOR || UNITY_STANDALONE_WIN
+            return !useLegacyMap;
+#else
+            return false;
+#endif
+        }
+    }
+
     /*
      //-------------------------------------------------------------------------
      * public 
@@ -120,6 +142,8 @@ public class SphereBehaviour : BaseBehaviour
     StageBehaviour Stage;
     UserBehaviour User;
     EnvironmentBehaviour Environment;
+    PcFieldRuntime PcField;
+    readonly Dictionary<GameObject, bool> pcFreeUiOriginalStates = new Dictionary<GameObject, bool>();
 
     MapTip objMapTip;
 
@@ -201,6 +225,14 @@ public class SphereBehaviour : BaseBehaviour
         //ステージ作成、開始
         Stage.init();
 
+        if (IsPcFreeMovement)
+        {
+            PcField = GetComponent<PcFieldRuntime>();
+            if (PcField == null)
+                PcField = gameObject.AddComponent<PcFieldRuntime>();
+            PcField.Initialize(this, Stage);
+        }
+
         EnvironmentBehaviour.Instance.setEnv(sphere.environment);
 
         actPt = sphere.actionPt;
@@ -233,6 +265,7 @@ public class SphereBehaviour : BaseBehaviour
 
 
         ApDispPanel.GetComponent<apDispBehaviour>().init();
+        if (IsPcFreeMovement) ApplyPcFreeUiMode();
 
         if (sphere.raid_dungeon.status == constants.Raid_Dungeon.START)
         {
@@ -258,6 +291,43 @@ public class SphereBehaviour : BaseBehaviour
         {
             this.reopen();
         }
+    }
+
+    public void ApplyPcFreeUiMode()
+    {
+        if (!IsPcFreeMovement) return;
+
+        SetPcFreeHidden(TouchPanel);
+        SetPcFreeHidden(InfoW);
+        SetPcFreeHidden(ApDispPanel);
+
+        if (StagePanel != null)
+        {
+            string[] legacyStageUi = { "cursor", "marker", "Command", "ItemList", "OkCancel" };
+            foreach (string childName in legacyStageUi)
+            {
+                Transform child = StagePanel.transform.Find(childName);
+                if (child != null) SetPcFreeHidden(child.gameObject);
+            }
+        }
+    }
+
+    public void ApplyLegacyUiMode()
+    {
+        foreach (KeyValuePair<GameObject, bool> entry in pcFreeUiOriginalStates)
+        {
+            if (entry.Key != null) entry.Key.SetActive(entry.Value);
+        }
+        pcFreeUiOriginalStates.Clear();
+        if (PcField != null) PcField.ShutdownForLegacy();
+    }
+
+    private void SetPcFreeHidden(GameObject target)
+    {
+        if (target == null) return;
+        if (!pcFreeUiOriginalStates.ContainsKey(target))
+            pcFreeUiOriginalStates[target] = target.activeSelf;
+        target.SetActive(false);
     }
 
     void reopen()
@@ -571,7 +641,9 @@ public class SphereBehaviour : BaseBehaviour
                     leader.unitNo = lead.Split(new char[] { ' ' })[1];
                     string move = lead.Split(new char[] { ' ' })[2];
 
-                    leader.flow.Add("FOCUS " + leader.unitNo);
+                    // PC Freeの時間tickでは敵行動のたびにCameraを奪わない。
+                    if (!IsPcFreeMovement)
+                        leader.flow.Add("FOCUS " + leader.unitNo);
 
                     for (int j = 0; j < move.Length; j++)
                     {
@@ -1430,6 +1502,18 @@ public class SphereBehaviour : BaseBehaviour
     {
         // コマンドユニットにカーソルを合わせる。
         Debug.Log("user run..");
+
+        if (IsPcFreeMovement && PcField != null)
+        {
+            ApplyPcFreeUiMode();
+            InfoW.SetActive(false);
+            TouchPanel.SetActive(false);
+
+            Stage.unitNo = leader.commUnit;
+            Stage.focus();
+            PcField.BeginFieldControl(leader.commUnit);
+            return;
+        }
 
         //User作成、開始
         User.commUnit = leader.commUnit;

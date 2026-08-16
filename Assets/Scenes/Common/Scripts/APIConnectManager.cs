@@ -241,6 +241,24 @@ public class APIConnectManager : EventDispatcher
         //StartCoroutine(_routine);
     }
 
+    /// <summary>
+    /// PC Free Movement専用。コールバックを共有フィールドへ保存せず、要求単位で保持する。
+    /// 通常SphereCommandのLegacy経路には影響させない。
+    /// </summary>
+    public void SpherePcMove(int sphereId, string code, int rev,
+        Dictionary<string, string> values, EventCallback eventCallback)
+    {
+        string param = "?module=Api&action=SphereCommand&id=" + sphereId
+            + "&code=" + code + "&rev=" + rev + "&oauth=" + login.oauth
+            + "&ver=" + Settings.ver + "&lang="
+            + PlayerPrefs.GetInt(Settings.LANGUAGE_SELECTED_KEY);
+
+        foreach (KeyValuePair<string, string> value in values)
+            param += "&" + value.Key + "=" + UnityWebRequest.EscapeURL(value.Value);
+
+        Connect(param, null, eventCallback, 10);
+    }
+
 
     /// <summary>
     /// スフィアのアイテムリストを取得する
@@ -853,7 +871,8 @@ public class APIConnectManager : EventDispatcher
     /// <param name="param">パラメータ</param>
     /// <param name="formData">ポストデータ</param>
     /// <returns></returns>
-    private async void Connect(string param, WWWForm formData = null)
+    private async void Connect(string param, WWWForm formData = null,
+        EventCallback requestCallback = null, int requestTimeoutSeconds = 0)
     {
 
         if (connectObj != null)
@@ -874,6 +893,9 @@ public class APIConnectManager : EventDispatcher
         {
             request = UnityWebRequest.Post(url, formData);
         }
+
+        if (requestTimeoutSeconds > 0)
+            request.timeout = requestTimeoutSeconds;
 
 
         try
@@ -909,7 +931,13 @@ public class APIConnectManager : EventDispatcher
 
             await request.SendWebRequest();
 
-            ConnectEnd(request);
+            ConnectEnd(request, requestCallback);
+        }
+        catch (Exception e)
+        {
+            Debug.LogException(e);
+            if (requestCallback != null)
+                requestCallback.Invoke("{\"result\":\"error\",\"err_code\":\"connection_exception\"}");
         }
         finally
         {
@@ -917,7 +945,7 @@ public class APIConnectManager : EventDispatcher
         }
     }
 
-    private void ConnectEnd(UnityWebRequest request)
+    private void ConnectEnd(UnityWebRequest request, EventCallback requestCallback = null)
     {
         Debug.Log("ConnectEnd run..");
 
@@ -930,6 +958,7 @@ public class APIConnectManager : EventDispatcher
             Debug.Log(request.error);
             MessageCanvas.SetActive(true);
             MessageCanvas.GetComponent<MessageBehaviour>().Open(string.Format(strtbl.GetEntry("error_connection").Value, request.error), false);
+            requestCallback?.Invoke("{\"result\":\"error\",\"err_code\":\"connection_error\"}");
         }
         else
         {
@@ -956,9 +985,15 @@ public class APIConnectManager : EventDispatcher
                     //それ以外のexeptionはそのまま出力
                     MessageCanvas.SetActive(true);
                     MessageCanvas.GetComponent<MessageBehaviour>().Open(string.Format(strtbl.GetEntry("error_unknown").Value, Settings.SUPPORT_MAIL_ADDRESS), false);
+                    requestCallback?.Invoke("{\"result\":\"error\",\"err_code\":\"json_parse_error\"}");
+                    return;
                 }
 
-                if (jsonInfo.result == "error")
+                if (jsonInfo == null)
+                {
+                    requestCallback?.Invoke("{\"result\":\"error\",\"err_code\":\"json_parse_error\"}");
+                }
+                else if (jsonInfo.result == "error")
                 {
                     if (jsonInfo.err_code.Equals("maintenance"))
                     {
@@ -988,14 +1023,19 @@ public class APIConnectManager : EventDispatcher
                     else
                     {
                         //上記以外のエラーは個別に画面で処理されたい
-                        _eventCallback?.Invoke(text);
+                        (requestCallback ?? _eventCallback)?.Invoke(text);
                     }
                 }
                 else
                 {
                     //callback
-                    _eventCallback?.Invoke(text);
+                    (requestCallback ?? _eventCallback)?.Invoke(text);
                 }
+            }
+            else
+            {
+                requestCallback?.Invoke("{\"result\":\"error\",\"err_code\":\"http_"
+                    + request.responseCode + "\"}");
             }
         }
     }
