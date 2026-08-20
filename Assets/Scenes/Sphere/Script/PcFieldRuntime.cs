@@ -255,6 +255,8 @@ public sealed class PcFieldRuntime : MonoBehaviour
             unsentPath.Clear();
             player.CorrectTo(accepted);
         }
+        // Forward normal Sphere leads while consuming PC-field control leads locally.
+        if (DispatchNormalLeads(json)) return;
         if (encounterPending) SendEncounter();
         else TrySendSync(true);
     }
@@ -352,6 +354,48 @@ public sealed class PcFieldRuntime : MonoBehaviour
             return found;
         }
         catch { return false; }
+    }
+
+    private bool DispatchNormalLeads(string json)
+    {
+        try
+        {
+            JObject root = JObject.Parse(json);
+            JObject leads = root["lead"] as JObject;
+            if (leads == null) return false;
+
+            JObject normalLeads = new JObject();
+            int normalLeadCount = 0;
+            foreach (JProperty property in leads.Properties())
+            {
+                string lead = (string)property.Value;
+                if (string.IsNullOrEmpty(lead)) continue;
+
+                string command = lead.Split(' ')[0];
+                if (command == "PCFIELD_SYNC" || command == "PCFIELD_READY"
+                    || command == "PCFIELD_ENCOUNTER" || command == "REVIS")
+                    continue;
+
+                normalLeadCount++;
+                normalLeads["lead" + normalLeadCount] = lead;
+            }
+
+            if (normalLeadCount == 0) return false;
+
+            JObject normalResponse = (JObject)root.DeepClone();
+            normalResponse["lead"] = normalLeads;
+            normalResponse["leadNum"] = normalLeadCount;
+
+            events.EnterBarrier();
+            SetLock(PcFieldInputLockReason.Event, true);
+            sphere.Mitter(normalResponse.ToString(Newtonsoft.Json.Formatting.None));
+            return true;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("[PCFIELD][SYNC] Failed to dispatch normal leads: " + e.Message, this);
+            return false;
+        }
     }
 
     private bool IsOk(string json)

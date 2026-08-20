@@ -222,7 +222,8 @@ public class APIConnectManager : EventDispatcher
     {
         this._eventCallback = eventCallback;
         string param = "?module=Api&action=Sphere&id=" + sphereId + "&reopen=" + reopen + "&oauth=" + login.oauth + "&ver=" + Settings.ver + "&lang=" + PlayerPrefs.GetInt(Settings.LANGUAGE_SELECTED_KEY);
-        Connect(param);
+        // Bind the callback to this request so concurrent API calls cannot replace it.
+        Connect(param, null, eventCallback);
         //StartCoroutine(_routine);
     }
 
@@ -930,14 +931,20 @@ public class APIConnectManager : EventDispatcher
 
 
             await request.SendWebRequest();
-
-            ConnectEnd(request, requestCallback);
         }
         catch (Exception e)
         {
             Debug.LogException(e);
             if (requestCallback != null)
                 requestCallback.Invoke("{\"result\":\"error\",\"err_code\":\"connection_exception\"}");
+            request.Dispose();
+            return;
+        }
+
+        // Keep callback exceptions out of the transport-error retry path.
+        try
+        {
+            ConnectEnd(request, requestCallback);
         }
         finally
         {
@@ -967,7 +974,8 @@ public class APIConnectManager : EventDispatcher
             if (request.responseCode == 200)
             {
                 // UTF8文字列として取得する
-                string text = handler.text;
+                // Normalize BOM-prefixed responses so validation and callbacks inspect the same JSON.
+                string text = handler.text.TrimStart('\uFEFF');
                 Debug.Log(text);
                 if (connectObj != null)
                 {

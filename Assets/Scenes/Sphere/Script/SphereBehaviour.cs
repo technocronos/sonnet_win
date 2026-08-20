@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -223,7 +224,8 @@ public class SphereBehaviour : BaseBehaviour
 
         Stage = StageBehaviour.Instance;
         //ステージ作成、開始
-        Stage.init();
+        // Pass the initialized owner explicitly so Stage cannot bind to a stale singleton instance.
+        Stage.init(this);
 
         if (IsPcFreeMovement)
         {
@@ -1430,31 +1432,38 @@ public class SphereBehaviour : BaseBehaviour
      */
     private void JsonToClass(string json)
     {
+        json = json.TrimStart('\uFEFF');
+
         //API結果受け取り
         sphere = JsonUtility.FromJson<jsonSphere>(json);
 
         Dictionary<string, object> jsonDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
 
+        // Convert object-keyed units explicitly because JsonUtility cannot populate dictionaries.
+        JObject jsonObject = JObject.Parse(json);
+        JToken unitValue;
+        bool hasUnit = jsonObject.TryGetValue("unit", out unitValue);
+        if (hasUnit && unitValue.Type == JTokenType.Object)
+        {
+            Dictionary<int, jsonUnit> units = new Dictionary<int, jsonUnit>();
+
+            Dictionary<string, object> dict1 = JsonConvert.DeserializeObject<Dictionary<string, object>>(unitValue.ToString());
+            foreach (KeyValuePair<string, object> keyvalue in dict1)
+            {
+                Debug.Log(keyvalue.Value);
+
+                jsonUnit jsonunitlist;
+                jsonunitlist = JsonUtility.FromJson<jsonUnit>(keyvalue.Value.ToString());
+
+                units.Add(int.Parse(keyvalue.Key), jsonunitlist);
+            }
+
+            sphere.unit = units;
+        }
+
         foreach (KeyValuePair<string, object> keyvalue in jsonDict)
         {
-            if (keyvalue.Key == "unit")
-            {
-                Dictionary<int, jsonUnit> units = new Dictionary<int, jsonUnit>();
-
-                Dictionary<string, object> dict1 = JsonConvert.DeserializeObject<Dictionary<string, object>>(keyvalue.Value.ToString());
-                foreach (KeyValuePair<string, object> keyvalue2 in dict1)
-                {
-                    Debug.Log(keyvalue2.Value);
-
-                    jsonUnit jsonunitlist;
-                    jsonunitlist = JsonUtility.FromJson<jsonUnit>(keyvalue2.Value.ToString());
-
-                    units.Add(int.Parse(keyvalue2.Key), jsonunitlist);
-                }
-
-                sphere.unit = units;
-            }
-            else if (keyvalue.Key == "unitIcon")
+            if (keyvalue.Key == "unitIcon")
             {
                 sphere.unitIcon = JsonConvert.DeserializeObject<Dictionary<int, string>>(keyvalue.Value.ToString());
             }
