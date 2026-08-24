@@ -49,6 +49,12 @@ function Replace-Required([string] $path, [string] $before, [string] $after) {
     [System.IO.File]::WriteAllText($path, $text.Replace($before, $after), [System.Text.UTF8Encoding]::new($false))
 }
 
+# MariaDB 10.11's default strict mode correctly rejects an INSERT that omits a
+# NOT NULL column without a schema default.  Keep the original schema intact
+# and provide the legacy registration value in the staged copy only.
+$userInfoServicePath = Join-Path $backendRoot 'webapp\webapp\lib\service\User_InfoService.class.php'
+Replace-Required $userInfoServicePath "'gold' => self::INITIAL_GOLD,`r`n            'place_id' => Place_MasterService::INITIAL_PLACE," "'gold' => self::INITIAL_GOLD,`r`n            'tutorial_step' => self::TUTORIAL_MORNING,`r`n            'place_id' => Place_MasterService::INITIAL_PLACE,"
+
 $spherePath = Join-Path $backendRoot 'webapp\webapp\lib\sphere\SphereCommon.class.php'
 Replace-Required $spherePath "if(`$user['action_pt'] < Service::create('Quest_Master')->getConsumePt(`$this->info['quest_id']))" "if(!SONNET_DISABLE_AP_LIMITS && `$user['action_pt'] < Service::create('Quest_Master')->getConsumePt(`$this->info['quest_id']))"
 Replace-Required $spherePath "if(`$user['action_pt'] < self::BATTLE_REMAKE_ACTPT) {" "if(!SONNET_DISABLE_AP_LIMITS && `$user['action_pt'] < self::BATTLE_REMAKE_ACTPT) {"
