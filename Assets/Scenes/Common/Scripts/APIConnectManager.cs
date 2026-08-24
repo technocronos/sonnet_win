@@ -968,11 +968,19 @@ public class APIConnectManager : EventDispatcher
                 {
                     jsonInfo = JsonUtility.FromJson<CommonError>(text);
                 }
-                catch (ArgumentException e)
+                catch (ArgumentException)
                 {
                     //それ以外のexeptionはそのまま出力
                     MessageCanvas.SetActive(true);
                     MessageCanvas.GetComponent<MessageBehaviour>().Open(string.Format(strtbl.GetEntry("error_unknown").Value, Settings.SUPPORT_MAIL_ADDRESS), false);
+                    requestCallback?.Invoke("{\"result\":\"error\",\"err_code\":\"json_parse_error\"}");
+                    return;
+                }
+
+                if (jsonInfo == null)
+                {
+                    requestCallback?.Invoke("{\"result\":\"error\",\"err_code\":\"json_parse_error\"}");
+                    return;
                 }
 
                 if (jsonInfo.result == "error")
