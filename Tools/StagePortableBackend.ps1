@@ -49,6 +49,29 @@ function Replace-Required([string] $path, [string] $before, [string] $after) {
     [System.IO.File]::WriteAllText($path, $text.Replace($before, $after), [System.Text.UTF8Encoding]::new($false))
 }
 
+function Ensure-LegacySphereCommandValidation([string] $path) {
+    $text = [System.IO.File]::ReadAllText($path)
+    $statementPattern = '(?m)^[\t ]*\$errorCode = \$this->checkCommand\(\$command\);[\t ]*\r?$'
+    if ([regex]::IsMatch($text, $statementPattern)) {
+        return
+    }
+
+    # The Docker reference worktree can contain this executable statement
+    # appended to a preceding // comment.  Restore it only in the staged copy.
+    $corruptedPattern = '(?m)^(?<comment>[\t ]*//[^\r\n]*?)[\t ]+\$errorCode = \$this->checkCommand\(\$command\);[\t ]*\r?$'
+    $matches = [regex]::Matches($text, $corruptedPattern)
+    if ($matches.Count -ne 1) {
+        throw "Expected exactly one Legacy SphereCommand validation statement or corrupted equivalent: $path"
+    }
+
+    $replacement = '${comment}' + "`r`n        " + '$errorCode = $this->checkCommand($command);'
+    $text = [regex]::Replace($text, $corruptedPattern, $replacement, 1)
+    if (-not [regex]::IsMatch($text, $statementPattern)) {
+        throw "Legacy SphereCommand validation is not executable after staging: $path"
+    }
+    [System.IO.File]::WriteAllText($path, $text, [System.Text.UTF8Encoding]::new($false))
+}
+
 # MariaDB 10.11's default strict mode correctly rejects an INSERT that omits a
 # NOT NULL column without a schema default.  Keep the original schema intact
 # and provide the legacy registration value in the staged copy only.
@@ -56,6 +79,7 @@ $userInfoServicePath = Join-Path $backendRoot 'webapp\webapp\lib\service\User_In
 Replace-Required $userInfoServicePath "'gold' => self::INITIAL_GOLD,`r`n            'place_id' => Place_MasterService::INITIAL_PLACE," "'gold' => self::INITIAL_GOLD,`r`n            'tutorial_step' => self::TUTORIAL_MORNING,`r`n            'place_id' => Place_MasterService::INITIAL_PLACE,"
 
 $spherePath = Join-Path $backendRoot 'webapp\webapp\lib\sphere\SphereCommon.class.php'
+Ensure-LegacySphereCommandValidation $spherePath
 Replace-Required $spherePath "if(`$user['action_pt'] < Service::create('Quest_Master')->getConsumePt(`$this->info['quest_id']))" "if(!SONNET_DISABLE_AP_LIMITS && `$user['action_pt'] < Service::create('Quest_Master')->getConsumePt(`$this->info['quest_id']))"
 Replace-Required $spherePath "if(`$user['action_pt'] < self::BATTLE_REMAKE_ACTPT) {" "if(!SONNET_DISABLE_AP_LIMITS && `$user['action_pt'] < self::BATTLE_REMAKE_ACTPT) {"
 Replace-Required $spherePath "`$userSvc->plusValue(`$this->info['user_id'], array('action_pt'=> -1 * self::BATTLE_REMAKE_ACTPT));" "if(!SONNET_DISABLE_AP_LIMITS) `$userSvc->plusValue(`$this->info['user_id'], array('action_pt'=> -1 * self::BATTLE_REMAKE_ACTPT));"
