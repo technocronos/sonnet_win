@@ -36,7 +36,13 @@ namespace Scenes.Common.Scripts
         public static string AP_DEVKEY = "rokG9uJaSGjzDqqJ9n98i4";
         public static string AP_APPID = "1372485938";
 
-#if RELEASE
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+        public const string Environment = "ローカル環境";
+        public static string Domain = "http";
+        public static string Host = LocalBackendSettings.ApiAuthority;
+        public static string RsourceHost = "test.native.sonnet.crns-game.net";
+        public const bool IsDevelop = true;
+#elif RELEASE
         public const string Environment = "本番環境";
         public static string Domain = "https";
         public static string Host = "native.sonnet.crns-game.net";

@@ -76,7 +76,21 @@ public class Main : BaseBehaviour, IAppsFlyerConversionData
     // Start is called before the first frame update
     protected override void Start()
     {
+        StartCoroutine(StartAfterLocalBackend());
+    }
+
+    private IEnumerator StartAfterLocalBackend()
+    {
         //base.Start();
+
+        while (!LocalBackendManager.IsFinished)
+            yield return null;
+
+        if (!LocalBackendManager.IsReady)
+        {
+            Debug.LogError("Main startup cancelled because the local backend failed: " + LocalBackendManager.StartupError);
+            yield break;
+        }
 
         instance = this;
 

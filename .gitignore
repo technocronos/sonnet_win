@@ -40,6 +40,10 @@ sysinfo.txt
 /Assets/Sound/
 /Assets/Plugins/iOS
 
+# Local official backend payloads are staged for a Windows build and are never source-controlled.
+/Assets/StreamingAssets/Backend/
+/_local_backend_runtime/
+
 /[Xx]code/
 /[Ll]ogs/
 
