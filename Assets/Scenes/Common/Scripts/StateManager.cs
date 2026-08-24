@@ -47,8 +47,18 @@ namespace StateManager
         {
             this._touch_flag = false;
 
-            // エディタ
-            if (Application.isEditor)
+            // タッチ入力を優先
+            if (Input.touchCount > 0)
+            {
+                Touch touch = Input.GetTouch(0);
+                this._touch_position = touch.position;
+                this._touch_phase = touch.phase;
+                this._touch_flag = true;
+                return;
+            }
+
+#if UNITY_EDITOR || UNITY_STANDALONE_WIN
+            // タッチ入力がない場合は、エディタとWindows Playerでマウス入力を使用
             {
 
                 // 離した瞬間
@@ -78,18 +88,8 @@ namespace StateManager
                 // 座標取得
                 if (this._touch_flag) this._touch_position = Input.mousePosition;
 
-                // 端末
             }
-            else
-            {
-                if (Input.touchCount > 0)
-                {
-                    Touch touch = Input.GetTouch(0);
-                    this._touch_position = touch.position;
-                    this._touch_phase = touch.phase;
-                    this._touch_flag = true;
-                }
-            }
+#endif
         }
 
         /**

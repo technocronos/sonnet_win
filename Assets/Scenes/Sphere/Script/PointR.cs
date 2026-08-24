@@ -195,12 +195,10 @@ class PointR
     //touchendX,touchendY,clientWidthも渡される。
     public void onTouchStart()
     {
-        Rect _stage = Stage.transform.GetComponent<RectTransform>().rect;
-
         Debug.Log("onTouchEnd start.. /stage/:scrolling=" + Stage.scrolling);
 
-        touchX = touchstartX * (Sphere.STAGE_WID / _stage.width);
-        touchY = touchstartY * (Sphere.STAGE_HEI / _stage.height);
+        touchX = touchstartX;
+        touchY = touchstartY;
 
         this.onTouch();
     }
@@ -431,12 +429,10 @@ class PointR
     //touchendX,touchendY,clientWidthも渡される。
     public void onTouchEnd()
     {
-        Rect _stage = Stage.transform.GetComponent<RectTransform>().rect;
-
         Debug.Log("onTouchEnd start.. /stage/:scrolling=" + Stage.scrolling);
 
-        touchX = touchendX * (Sphere.STAGE_WID / _stage.width);
-        touchY = touchendY * (Sphere.STAGE_HEI / _stage.height);
+        touchX = touchendX;
+        touchY = touchendY;
 
         this.onTouch();
     }
