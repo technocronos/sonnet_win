@@ -199,7 +199,7 @@ public class SphereBehaviour : BaseBehaviour
 
         Stage = StageBehaviour.Instance;
         //ステージ作成、開始
-        Stage.init();
+        Stage.init(this);
 
         EnvironmentBehaviour.Instance.setEnv(sphere.environment);
 

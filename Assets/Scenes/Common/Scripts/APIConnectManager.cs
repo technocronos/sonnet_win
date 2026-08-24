@@ -853,8 +853,14 @@ public class APIConnectManager : EventDispatcher
     /// <param name="param">パラメータ</param>
     /// <param name="formData">ポストデータ</param>
     /// <returns></returns>
-    private async void Connect(string param, WWWForm formData = null)
+    private async void Connect(string param, WWWForm formData = null, EventCallback requestCallback = null)
     {
+
+        // Capture the callback when the request starts so another API call cannot replace it.
+        if (requestCallback == null)
+        {
+            requestCallback = _eventCallback;
+        }
 
         if (connectObj != null)
         {
@@ -908,8 +914,19 @@ public class APIConnectManager : EventDispatcher
 
 
             await request.SendWebRequest();
+        }
+        catch (Exception e)
+        {
+            Debug.LogException(e);
+            request.Dispose();
+            requestCallback?.Invoke("{\"result\":\"error\",\"err_code\":\"connection_exception\"}");
+            return;
+        }
 
-            ConnectEnd(request);
+        // Callback exceptions are not transport failures and must not re-enter the error callback.
+        try
+        {
+            ConnectEnd(request, requestCallback);
         }
         finally
         {
@@ -917,7 +934,7 @@ public class APIConnectManager : EventDispatcher
         }
     }
 
-    private void ConnectEnd(UnityWebRequest request)
+    private void ConnectEnd(UnityWebRequest request, EventCallback requestCallback)
     {
         Debug.Log("ConnectEnd run..");
 
@@ -938,7 +955,7 @@ public class APIConnectManager : EventDispatcher
             if (request.responseCode == 200)
             {
                 // UTF8文字列として取得する
-                string text = handler.text;
+                string text = handler.text.TrimStart('\uFEFF');
                 Debug.Log(text);
                 if (connectObj != null)
                 {
@@ -988,13 +1005,13 @@ public class APIConnectManager : EventDispatcher
                     else
                     {
                         //上記以外のエラーは個別に画面で処理されたい
-                        _eventCallback?.Invoke(text);
+                        requestCallback?.Invoke(text);
                     }
                 }
                 else
                 {
                     //callback
-                    _eventCallback?.Invoke(text);
+                    requestCallback?.Invoke(text);
                 }
             }
         }

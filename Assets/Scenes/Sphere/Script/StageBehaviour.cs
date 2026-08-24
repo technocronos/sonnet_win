@@ -137,11 +137,11 @@ public class StageBehaviour : BaseBehaviour
 
     public bool act_start { get; set; } = false;
 
-    public void init()
+    public void init(SphereBehaviour sphere)
     {
         Debug.Log("StageBehaviour init running..");
 
-        Sphere = SphereBehaviour.Instance;
+        Sphere = sphere;
         User = UserBehaviour.Instance;
 
         Sphere.sphere_bg.SetActive(false);
