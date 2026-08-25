@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -1369,13 +1370,13 @@ public class SphereBehaviour : BaseBehaviour
             {
                 Dictionary<int, jsonUnit> units = new Dictionary<int, jsonUnit>();
 
-                Dictionary<string, object> dict1 = JsonConvert.DeserializeObject<Dictionary<string, object>>(keyvalue.Value.ToString());
-                foreach (KeyValuePair<string, object> keyvalue2 in dict1)
+                Dictionary<string, jsonUnit> dict1 = DeserializeStringDictionary<jsonUnit>(keyvalue.Value, "unit");
+                foreach (KeyValuePair<string, jsonUnit> keyvalue2 in dict1)
                 {
                     Debug.Log(keyvalue2.Value);
 
                     jsonUnit jsonunitlist;
-                    jsonunitlist = JsonUtility.FromJson<jsonUnit>(keyvalue2.Value.ToString());
+                    jsonunitlist = keyvalue2.Value as jsonUnit;
 
                     units.Add(int.Parse(keyvalue2.Key), jsonunitlist);
                 }
@@ -1384,44 +1385,49 @@ public class SphereBehaviour : BaseBehaviour
             }
             else if (keyvalue.Key == "unitIcon")
             {
-                sphere.unitIcon = JsonConvert.DeserializeObject<Dictionary<int, string>>(keyvalue.Value.ToString());
+                sphere.unitIcon = DeserializeIntDictionary<string>(keyvalue.Value, "unitIcon");
             }
             else if (keyvalue.Key == "item")
             {
-                try
-                {
-                    sphere.item = JsonConvert.DeserializeObject<Dictionary<int, string>>(keyvalue.Value.ToString());
-                }
-                catch (Exception e)
-                {
-                    Debug.Log(e);
-                }
+                sphere.item = DeserializeIntDictionary<string>(keyvalue.Value, "item");
                 sphere.item[999] = "itm damag 01 00 " + Utility.getText("SPHERE_STR_CMD_ATACK");
             }
             else if (keyvalue.Key == "orn")
             {
-                try
-                {
-                    sphere.orn = JsonConvert.DeserializeObject<Dictionary<int, string>>(keyvalue.Value.ToString());
-                }
-                catch (Exception e)
-                {
-                    Debug.Log(e);
-                }
+                sphere.orn = DeserializeIntDictionary<string>(keyvalue.Value, "orn");
             }
             else if (keyvalue.Key == "tip")
             {
-                sphere.tip = JsonConvert.DeserializeObject<Dictionary<int, string>>(keyvalue.Value.ToString());
+                sphere.tip = DeserializeIntDictionary<string>(keyvalue.Value, "tip");
 
             }
             else if (keyvalue.Key == "tipId")
             {
 
-                sphere.tipId = JsonConvert.DeserializeObject<Dictionary<int, string>>(keyvalue.Value.ToString());
+                sphere.tipId = DeserializeIntDictionary<string>(keyvalue.Value, "tipId");
             }
         }
     }
 
+    private static Dictionary<int, T> DeserializeIntDictionary<T>(object rawValue, string fieldName)
+    {
+        JToken token = rawValue == null ? JValue.CreateNull() : JToken.Parse(rawValue.ToString());
+        if (token.Type == JTokenType.Null || (token.Type == JTokenType.Array && !token.HasValues))
+            return new Dictionary<int, T>();
+        if (token.Type != JTokenType.Object)
+            throw new JsonSerializationException("Sphere field '" + fieldName + "' must be an object or an empty array.");
+        return token.ToObject<Dictionary<int, T>>();
+    }
+
+    private static Dictionary<string, T> DeserializeStringDictionary<T>(object rawValue, string fieldName)
+    {
+        JToken token = rawValue == null ? JValue.CreateNull() : JToken.Parse(rawValue.ToString());
+        if (token.Type == JTokenType.Null || (token.Type == JTokenType.Array && !token.HasValues))
+            return new Dictionary<string, T>();
+        if (token.Type != JTokenType.Object)
+            throw new JsonSerializationException("Sphere field '" + fieldName + "' must be an object or an empty array.");
+        return token.ToObject<Dictionary<string, T>>();
+    }
 
     //----------------------------------------------------------------------
     // ユーザ入力を処理するフェーズを表す。
