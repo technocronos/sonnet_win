@@ -25,6 +25,7 @@ public class SphereBehaviour : BaseBehaviour
     public GameObject Story;
     public TextMeshProUGUI StoryText;
     public GameObject StagePanel;
+    public GameObject SphereViewport;
     public GameObject ApDispPanel;
     public GameObject InfoW;
     public BteffXBehaviour bteffX;
@@ -123,6 +124,17 @@ public class SphereBehaviour : BaseBehaviour
     EnvironmentBehaviour Environment;
 
     MapTip objMapTip;
+
+    public RectTransform ViewportRect
+    {
+        get
+        {
+            if (SphereViewport != null)
+                return SphereViewport.transform as RectTransform;
+
+            return StagePanel == null ? null : StagePanel.transform.parent as RectTransform;
+        }
+    }
 
     // Start is called before the first frame update
     protected override void Start()

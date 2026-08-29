@@ -29,6 +29,25 @@ class PointR
     public int move_x { get; set; }
     public int move_y { get; set; }
 
+    int stageGridX;
+    int stageGridY;
+    bool hasStageGrid;
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+    bool pointDiagnosticsLogged;
+#endif
+
+    public void SetStageGrid(int x, int y)
+    {
+        stageGridX = x;
+        stageGridY = y;
+        hasStageGrid = true;
+    }
+
+    public void ClearStageGrid()
+    {
+        hasStageGrid = false;
+    }
+
 
     public int focusUnit { get; set; }
 
@@ -243,6 +262,15 @@ class PointR
                 move_x = Stage.cursorX + slide_x;
                 move_y = Stage.cursorY + slide_y;
 
+                if (hasStageGrid)
+                {
+                    move_x = stageGridX;
+                    move_y = stageGridY;
+                    slide_x = move_x - Stage.cursorX;
+                    slide_y = move_y - Stage.cursorY;
+                    hasStageGrid = false;
+                }
+
                 //どっちかでも範囲外なら反応しない
                 if (move_x >= 0 && move_y >= 0 && move_x < Sphere.sphere.structWid && move_y < Sphere.sphere.structHei)
                 {
@@ -259,6 +287,17 @@ class PointR
                         move_y = Sphere.sphere.structHei - 1;
 
                     //一回フォーカス判定する
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+                    if (!pointDiagnosticsLogged)
+                    {
+                        string key = "mark" + move_x + "_" + move_y;
+                        bool exists = Stage.objMarker.marks.ContainsKey(key);
+                        int value = exists ? Stage.objMarker.marks[key] : int.MinValue;
+                        Debug.Log("[POINT_COORD] incomingStageLocal=" + touchX + "," + touchY + " calculatedX=" + move_x + " calculatedY=" + move_y);
+                        Debug.Log("[POINT_VALID] stageGrid=" + move_x + "," + move_y + " pointR.x=" + move_x + " pointR.y=" + move_y + " lookupKey=" + key + " markerExists=" + exists + " markerActive=" + (exists && value >= 0) + " markerObject=" + Stage.objMarker);
+                        pointDiagnosticsLogged = true;
+                    }
+#endif
                     this._valid();
 
                     // 有効な選択である場合。
@@ -434,7 +473,16 @@ class PointR
         touchX = touchendX;
         touchY = touchendY;
 
-        this.onTouch();
+        try
+        {
+            this.onTouch();
+        }
+        finally
+        {
+            // A Stage-provided grid belongs to this Ended event only, including
+            // invalid taps and early returns from the legacy touch path.
+            ClearStageGrid();
+        }
     }
 
     public int gainX { get; set; }
@@ -449,68 +497,7 @@ class PointR
     public void onFlick()
     {
         if (touchstartX > 0 && touchstartY > 0)
-        {
-            Vector3 _stage = Stage.transform.GetComponent<RectTransform>().anchoredPosition;
-
-            //X座標可動範囲
-            if ((Sphere.sphere.structWid * Sphere.TIP_SIZE) + (Sphere.TIP_SIZE * (Sphere.STAGE_MARGIN * 2)) > Sphere.STAGE_WID)
-            {
-                //マップX全体がそもそもステージX+チップ左右に2個分マージンより小さい場合は動かない
-                if (gainX > Sphere.TIP_SIZE * Sphere.STAGE_MARGIN)
-                {
-                    //チップ2個分以上左に飛び出ない
-                    float __x = (Sphere.TIP_SIZE * Sphere.STAGE_MARGIN);
-                    Stage.transform.GetComponent<RectTransform>().anchoredPosition = new Vector3(__x, _stage.y, 0);
-                    //Stageに通知する
-                    Stage.left_over = true;
-                }
-                else if (gainX < (((Sphere.sphere.structWid * Sphere.TIP_SIZE) + (Sphere.TIP_SIZE * Sphere.STAGE_MARGIN)) - Sphere.STAGE_WID) * -1)
-                {
-                    //チップ2個分以上右に飛び出ない
-                    float __x = (((Sphere.sphere.structWid * Sphere.TIP_SIZE) + (Sphere.TIP_SIZE * Sphere.STAGE_MARGIN)) - Sphere.STAGE_WID) * -1;
-                    Stage.transform.GetComponent<RectTransform>().anchoredPosition = new Vector3(__x, _stage.y, 0);
-
-                    //Stageに通知する
-                    Stage.right_over = true;
-                }
-                else
-                {
-                    Stage.transform.GetComponent<RectTransform>().anchoredPosition = new Vector3(gainX, _stage.y, 0);
-                }
-            }
-
-            float stage_height = Sphere.STAGE_HEI;
-
-            if ((Sphere.sphere.structHei * Sphere.TIP_SIZE) + (Sphere.TIP_SIZE * (Sphere.STAGE_MARGIN * 2)) > stage_height)
-            {
-                //再取得しておく
-                _stage = Stage.transform.GetComponent<RectTransform>().anchoredPosition;
-
-                //マップY全体がそもそもステージY+チップ左右に2個分マージンより小さい場合は動かない
-                if (gainY > Sphere.TIP_SIZE * Sphere.TOP_MARGIN)
-                {
-                    //チップ2個分以上、上に飛び出ない
-                    float __y = Sphere.TIP_SIZE * Sphere.TOP_MARGIN;
-                    Stage.transform.GetComponent<RectTransform>().anchoredPosition = new Vector3(_stage.x, __y * -1, 0);
-
-                    //Stageに通知する
-                    Stage.top_over = true;
-                }
-                else if (gainY < (((Sphere.sphere.structHei * Sphere.TIP_SIZE) + (Sphere.TIP_SIZE * (Sphere.STAGE_MARGIN * Sphere.BOTTOM_MARGIN))) - stage_height) * -1)
-                {
-                    //チップ2個分以上、下に飛び出ない
-                    float __y = (((Sphere.sphere.structHei * Sphere.TIP_SIZE) + (Sphere.TIP_SIZE * (Sphere.STAGE_MARGIN * Sphere.BOTTOM_MARGIN))) - stage_height) * -1;
-                    Stage.transform.GetComponent<RectTransform>().anchoredPosition = new Vector3(_stage.x, __y * -1, 0);
-
-                    //Stageに通知する
-                    Stage.bottom_over = true;
-                }
-                else
-                {
-                    Stage.transform.GetComponent<RectTransform>().anchoredPosition = new Vector3(_stage.x, gainY * -1, 0);
-                }
-            }
-        }
+            Stage.ApplyFlickPosition(gainX, gainY);
     }
 
 }

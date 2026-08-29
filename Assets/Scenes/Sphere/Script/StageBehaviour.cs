@@ -73,7 +73,14 @@ public class StageBehaviour : BaseBehaviour
     public Image _cursor { get; set; } = null;
     TouchManager _touch_manager { get; set; } = null;
     private RectTransform _stage_rect { get; set; }
+    private RectTransform _viewport_rect { get; set; }
     private Camera _event_camera { get; set; }
+#if UNITY_EDITOR || UNITY_STANDALONE_WIN
+    private Vector2 mouseDownScreenPosition;
+    private Vector2 stagePositionAtMouseDown;
+    private bool mouseDragging;
+    private bool windowsMouseGesture;
+#endif
 
     // Start is called before the first frame update
     protected override void Start()
@@ -112,6 +119,17 @@ public class StageBehaviour : BaseBehaviour
         if (_stage_rect == null)
             return false;
 
+        if (_viewport_rect == null && Sphere != null)
+            _viewport_rect = Sphere.ViewportRect;
+
+        if (_viewport_rect == null)
+            return false;
+
+        Vector2 viewportPosition;
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_viewport_rect, screenPosition, _event_camera, out viewportPosition)
+            || !_viewport_rect.rect.Contains(viewportPosition))
+            return false;
+
         Vector2 localPosition;
         if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_stage_rect, screenPosition, _event_camera, out localPosition))
             return false;
@@ -137,11 +155,132 @@ public class StageBehaviour : BaseBehaviour
 
     public bool act_start { get; set; } = false;
 
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+    bool viewportDiagnosticsLogged;
+    bool inputDiagnosticsLogged;
+    int inputFollowDiagnosticsCount;
+    int stageWriteDiagnosticsCount;
+    int centerDiagnosticsCount;
+    int slideCursorDiagnosticsCount;
+#endif
+
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+    private void LogStageWrite(string source, Vector3 before, Vector3 after)
+    {
+        if (stageWriteDiagnosticsCount >= 40)
+            return;
+
+        RectTransform viewport = _viewport_rect == null || Sphere == null ? null : _viewport_rect;
+        string stageGrid = User == null || User.objPointR == null ? "none" : User.objPointR.move_x + "," + User.objPointR.move_y;
+        string mapBounds = Sphere == null || Sphere.sphere == null ? "none" : "0,0 to " + (Sphere.sphere.structWid * Sphere.TIP_SIZE) + "," + (Sphere.sphere.structHei * Sphere.TIP_SIZE);
+        Debug.Log("[STAGE_WRITE] source=" + source
+            + " before=" + before
+            + " after=" + after
+            + " cursor=" + cursorX + "," + cursorY
+            + " focusUnit=" + unitNo
+            + " stageGrid=" + stageGrid
+            + " viewportRect=" + (viewport == null ? "none" : viewport.rect.ToString())
+            + " mapBounds=" + mapBounds);
+        stageWriteDiagnosticsCount++;
+    }
+
+    private void LogCenterCalculation(Vector3 stageBefore, Vector3 targetLocal, Vector3 desiredStagePosition, Vector3 clampedStagePosition, Vector2 mapSize, Vector2 viewportSize)
+    {
+        if (centerDiagnosticsCount >= 16)
+            return;
+
+        Debug.Log("[CENTER_CALC] stageBefore=" + stageBefore
+            + " targetLocal=" + targetLocal
+            + " visibleCenter=" + (viewportSize * 0.5f)
+            + " desiredStagePos=" + desiredStagePosition
+            + " clampedStagePos=" + clampedStagePosition
+            + " mapSize=" + mapSize
+            + " viewportSize=" + viewportSize);
+        centerDiagnosticsCount++;
+    }
+
+    private void LogSlideCursor(Vector3 stageBefore, int clickedX, int clickedY, Vector3 cursorLocal, Vector3 stageAfter)
+    {
+        if (slideCursorDiagnosticsCount >= 16)
+            return;
+
+        Debug.Log("[SLIDE_CSR] stageBefore=" + stageBefore
+            + " clickedGrid=" + clickedX + "," + clickedY
+            + " cursorLocal=" + cursorLocal
+            + " calculatedDestination=" + moveX + "," + moveY
+            + " stageAfter=" + stageAfter);
+        slideCursorDiagnosticsCount++;
+    }
+
+    private void LogInputFollow(Vector2 screenPoint, Vector2 viewportLocalPoint, Vector2 stageLocalPoint, int gridX, int gridY)
+    {
+        if (inputFollowDiagnosticsCount >= 2)
+            return;
+
+        MarkerBehaviour marker = null;
+        string markerObjectName = objMarker == null ? string.Empty : objMarker.isExists(gridX, gridY);
+        if (!string.IsNullOrEmpty(markerObjectName))
+        {
+            Transform markerTransform = transform.Find(markerObjectName);
+            marker = markerTransform == null ? null : markerTransform.GetComponent<MarkerBehaviour>();
+        }
+        Vector3 expectedMarkerLocal = new Vector3(gridX * Sphere.TIP_SIZE, gridY * Sphere.TIP_SIZE * -1f, 0f);
+        foreach (MarkerBehaviour candidate in GetComponentsInChildren<MarkerBehaviour>(true))
+        {
+            if (marker != null)
+                break;
+            Vector3 candidateLocal = candidate.transform.localPosition;
+            if (candidate.gameObject.activeInHierarchy
+                && Mathf.Approximately(candidateLocal.x, expectedMarkerLocal.x)
+                && Mathf.Approximately(candidateLocal.y, expectedMarkerLocal.y))
+            {
+                marker = candidate;
+                break;
+            }
+        }
+
+        Vector3 markerWorld = marker == null ? Vector3.zero : marker.transform.position;
+        Vector2 markerScreen = Vector2.zero;
+        if (marker != null)
+        {
+            RectTransform markerRect = marker.transform as RectTransform;
+            if (markerRect != null)
+            {
+                Vector3[] corners = new Vector3[4];
+                markerRect.GetWorldCorners(corners);
+                markerWorld = (corners[0] + corners[1] + corners[2] + corners[3]) * 0.25f;
+            }
+            markerScreen = RectTransformUtility.WorldToScreenPoint(_event_camera, markerWorld);
+        }
+        Canvas viewportCanvas = _viewport_rect == null ? null : _viewport_rect.GetComponentInParent<Canvas>();
+        Camera viewportCamera = viewportCanvas == null || viewportCanvas.rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : viewportCanvas.rootCanvas.worldCamera;
+        string markerKey = "mark" + gridX + "_" + gridY;
+
+        Debug.Log("[INPUT_FOLLOW] ScreenPoint=" + screenPoint
+            + " StageAnchoredPosition=" + _stage_rect.anchoredPosition
+            + " StageWorldPosition=" + _stage_rect.position
+            + " StageCamera=" + (_event_camera == null ? "null" : _event_camera.name)
+            + " ViewportCamera=" + (viewportCamera == null ? "null" : viewportCamera.name)
+            + " ViewportLocalPoint=" + viewportLocalPoint
+            + " StageLocalPoint=" + stageLocalPoint
+            + " CalculatedGrid=" + gridX + "," + gridY
+            + " MarkerKey=" + markerKey
+            + " MarkerObjectName=" + markerObjectName
+            + " MarkerActive=" + (marker != null && marker.gameObject.activeInHierarchy)
+            + " MarkerStageLocal=" + (marker == null ? "missing" : marker.transform.localPosition.ToString())
+            + " MarkerWorld=" + (marker == null ? "missing" : markerWorld.ToString())
+            + " MarkerScreen=" + (marker == null ? "missing" : markerScreen.ToString())
+            + " ScreenDeltaToMarker=" + (marker == null ? "missing" : (screenPoint - markerScreen).ToString()));
+        inputFollowDiagnosticsCount++;
+    }
+#endif
+
     public void init(SphereBehaviour sphere)
     {
         Debug.Log("StageBehaviour init running..");
 
         Sphere = sphere;
+        _viewport_rect = Sphere.ViewportRect;
         User = UserBehaviour.Instance;
 
         Sphere.sphere_bg.SetActive(false);
@@ -311,8 +450,12 @@ public class StageBehaviour : BaseBehaviour
                 else
                     speed = SCROLL_SPD;
 
+                Vector3 beforeWrite = _stage;
                 transform.GetComponent<RectTransform>().anchoredPosition = new Vector3(Sphere.propMove(actX, (int)_stage.x, speed), _stage.y, _stage.z);
                 _stage = transform.GetComponent<RectTransform>().anchoredPosition;
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+                LogStageWrite("FixedUpdate.X", beforeWrite, _stage);
+#endif
 
                 _offsetX = actX;
             }
@@ -327,8 +470,12 @@ public class StageBehaviour : BaseBehaviour
                 else
                     speed = SCROLL_SPD;
 
+                Vector3 beforeWrite = _stage;
                 transform.GetComponent<RectTransform>().anchoredPosition = new Vector3(_stage.x, Sphere.propMove(actY, (int)_stage.y, speed), _stage.z);
                 _stage = transform.GetComponent<RectTransform>().anchoredPosition;
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+                LogStageWrite("FixedUpdate.Y", beforeWrite, _stage);
+#endif
 
                 _offsetY = actY * -1;
             }
@@ -345,7 +492,11 @@ public class StageBehaviour : BaseBehaviour
             if (vib != 0)
             {
                 _stage.x += vib;
+                Vector3 beforeWrite = transform.GetComponent<RectTransform>().anchoredPosition;
                 transform.GetComponent<RectTransform>().anchoredPosition = new Vector3(_stage.x, _stage.y, _stage.z);
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+                LogStageWrite("FixedUpdate.vibration", beforeWrite, transform.GetComponent<RectTransform>().anchoredPosition);
+#endif
                 vib *= -1;
             }
         }
@@ -379,6 +530,18 @@ public class StageBehaviour : BaseBehaviour
             // タッチした瞬間の処理
             if (touch_state._touch_phase == TouchPhase.Began)
             {
+                User.objPointR.ClearStageGrid();
+#if UNITY_EDITOR || UNITY_STANDALONE_WIN
+                // The Windows bridge reports held mouse input as Moved.  Keep the
+                // original mobile Touch path intact and classify its gesture here.
+                windowsMouseGesture = Input.touchCount == 0;
+                if (windowsMouseGesture)
+                {
+                    mouseDownScreenPosition = touch_state._touch_position;
+                    stagePositionAtMouseDown = (transform as RectTransform).anchoredPosition;
+                    mouseDragging = false;
+                }
+#endif
                 //タッチ開始座標をとっておく
                 touchstartX = touch_x;
                 touchstartY = touch_y;
@@ -397,6 +560,19 @@ public class StageBehaviour : BaseBehaviour
             }
             else if (touch_state._touch_phase == TouchPhase.Moved)
             {
+                User.objPointR.ClearStageGrid();
+#if UNITY_EDITOR || UNITY_STANDALONE_WIN
+                if (windowsMouseGesture && !mouseDragging)
+                {
+                    float dragThreshold = UnityEngine.EventSystems.EventSystem.current == null
+                        ? 0f
+                        : UnityEngine.EventSystems.EventSystem.current.pixelDragThreshold;
+                    if ((touch_state._touch_position - mouseDownScreenPosition).sqrMagnitude < dragThreshold * dragThreshold)
+                        return;
+
+                    mouseDragging = true;
+                }
+#endif
                 //flick_lockがかかってる場合はリターン
                 if (User.flick_lock) return;
 
@@ -461,11 +637,45 @@ public class StageBehaviour : BaseBehaviour
             }
             else if (touch_state._touch_phase == TouchPhase.Ended)
             {
+#if UNITY_EDITOR || UNITY_STANDALONE_WIN
+                if (windowsMouseGesture && mouseDragging)
+                {
+                    User.objPointR.ClearStageGrid();
+                    windowsMouseGesture = false;
+                    mouseDragging = false;
+                    return;
+                }
+                windowsMouseGesture = false;
+                mouseDragging = false;
+#endif
                 User.objPointR.touchendX = touch_x;
                 User.objPointR.touchendY = touch_y;
+                User.objPointR.SetStageGrid((int)(touch_x / Sphere.TIP_SIZE), (int)(touch_y / Sphere.TIP_SIZE));
+
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+                Vector2 viewportPosition = Vector2.zero;
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(_viewport_rect, touch_state._touch_position, _event_camera, out viewportPosition);
+                LogInputFollow(touch_state._touch_position, viewportPosition, stagePosition, (int)(touch_x / Sphere.TIP_SIZE), (int)(touch_y / Sphere.TIP_SIZE));
+                if (!inputDiagnosticsLogged)
+                {
+                    Debug.Log("[SPHERE_INPUT] ScreenPoint=" + touch_state._touch_position
+                        + " StageLocalPoint=" + stagePosition
+                        + " GridXY=" + ((int)(touch_x / Sphere.TIP_SIZE)) + "," + ((int)(touch_y / Sphere.TIP_SIZE))
+                        + " MarkerFound=" + (objMarker != null));
+                    inputDiagnosticsLogged = true;
+                }
+#endif
 
                 User.objPointR.onTouchEnd();
 
+            }
+            else if (touch_state._touch_phase == TouchPhase.Canceled)
+            {
+                User.objPointR.ClearStageGrid();
+#if UNITY_EDITOR || UNITY_STANDALONE_WIN
+                windowsMouseGesture = false;
+                mouseDragging = false;
+#endif
             }
         }
     }
@@ -569,6 +779,12 @@ public class StageBehaviour : BaseBehaviour
 
         Debug.Log("slideCsr running...");
 
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+        Vector3 stageBefore = transform.GetComponent<RectTransform>().anchoredPosition;
+        int clickedX = cursorX + slideX;
+        int clickedY = cursorY + slideY;
+#endif
+
         moveX = cursorX + slideX;
         moveY = cursorY + slideY;
 
@@ -588,6 +804,10 @@ public class StageBehaviour : BaseBehaviour
             // 反映。
             _cursor.transform.localPosition = new Vector3(cursorX * Sphere.TIP_SIZE, cursorY * Sphere.TIP_SIZE * -1);
         }
+
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+        LogSlideCursor(stageBefore, clickedX, clickedY, _cursor.transform.localPosition, transform.GetComponent<RectTransform>().anchoredPosition);
+#endif
     }
 
     //
@@ -598,8 +818,12 @@ public class StageBehaviour : BaseBehaviour
     {
         Debug.Log("center running...");
 
-        float stage_wid = Sphere.STAGE_WID / Sphere.TIP_SIZE;
-        float stage_hei = Sphere.STAGE_HEI / Sphere.TIP_SIZE;
+        RectTransform viewport = _viewport_rect == null ? Sphere.ViewportRect : _viewport_rect;
+        if (viewport == null)
+            return;
+
+        float stage_wid = viewport.rect.width / Sphere.TIP_SIZE;
+        float stage_hei = viewport.rect.height / Sphere.TIP_SIZE;
 
 
         if (cursorX + offsetX < lef)
@@ -637,8 +861,42 @@ public class StageBehaviour : BaseBehaviour
             offsetY = stage_hei - bot - cursorY - 1;
         }
 
+        // A small map is content, not a viewport: keep it centred without
+        // scaling its legacy 110px grid.
+        float mapWidth = Sphere.sphere.structWid * Sphere.TIP_SIZE;
+        float mapHeight = Sphere.sphere.structHei * Sphere.TIP_SIZE;
+        if (mapWidth <= viewport.rect.width)
+            offsetX = (viewport.rect.width - mapWidth) / (2f * Sphere.TIP_SIZE);
+        if (mapHeight <= viewport.rect.height)
+            offsetY = -((viewport.rect.height - mapHeight) / (2f * Sphere.TIP_SIZE));
+
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+        Vector3 stageBefore = transform.GetComponent<RectTransform>().anchoredPosition;
+        Vector3 targetLocal = new Vector3(cursorX * Sphere.TIP_SIZE, cursorY * Sphere.TIP_SIZE * -1f, 0f);
+        Vector3 desiredStagePosition = new Vector3(offsetX * Sphere.TIP_SIZE, offsetY * Sphere.TIP_SIZE * -1f, stageBefore.z);
+        LogCenterCalculation(stageBefore, targetLocal, desiredStagePosition, desiredStagePosition,
+            new Vector2(mapWidth, mapHeight), viewport.rect.size);
+#endif
+
         // スクロール中かどうかを表すフラグを初期化。
         scrolling = true;
+    }
+
+    public void ApplyFlickPosition(float gainX, float gainY)
+    {
+        RectTransform viewport = _viewport_rect == null ? Sphere.ViewportRect : _viewport_rect;
+        if (viewport == null)
+            return;
+
+        float mapWidth = Sphere.sphere.structWid * Sphere.TIP_SIZE;
+        float mapHeight = Sphere.sphere.structHei * Sphere.TIP_SIZE;
+        float x = mapWidth <= viewport.rect.width ? (viewport.rect.width - mapWidth) / 2f : Mathf.Clamp(gainX, viewport.rect.width - mapWidth, 0f);
+        float y = mapHeight <= viewport.rect.height ? -((viewport.rect.height - mapHeight) / 2f) : Mathf.Clamp(-gainY, -(mapHeight - viewport.rect.height), 0f);
+        Vector3 beforeWrite = transform.GetComponent<RectTransform>().anchoredPosition;
+        transform.GetComponent<RectTransform>().anchoredPosition = new Vector3(x, y, 0);
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+        LogStageWrite("ApplyFlickPosition", beforeWrite, transform.GetComponent<RectTransform>().anchoredPosition);
+#endif
     }
 
     //
@@ -653,7 +911,31 @@ public class StageBehaviour : BaseBehaviour
         moveY = unitinfo.Y;
 
         if (moveX >= 0)
+        {
             this.moveCsr();
+
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+            if (!viewportDiagnosticsLogged)
+            {
+                RectTransform viewport = _viewport_rect == null ? Sphere.ViewportRect : _viewport_rect;
+                RectTransform stage = transform as RectTransform;
+                Vector3 unitLocal = Vector3.zero;
+                string unitKey = "unit_" + unitNo;
+                if (objUnits != null && objUnits.units != null && objUnits.units.ContainsKey(unitKey))
+                    unitLocal = objUnits.units[unitKey].transform.localPosition;
+
+                Debug.Log("[SPHERE_VIEWPORT] Screen=" + Screen.width + "x" + Screen.height
+                    + " ViewportRect=" + (viewport == null ? "none" : viewport.rect.ToString())
+                    + " StageRect=" + (stage == null ? "none" : stage.rect.ToString())
+                    + " StageAnchoredPosition=" + (stage == null ? "none" : stage.anchoredPosition.ToString())
+                    + " MapBounds=0,0 to " + (Sphere.sphere.structWid * Sphere.TIP_SIZE) + "," + (Sphere.sphere.structHei * Sphere.TIP_SIZE)
+                    + " FocusUnitLocal=" + unitLocal
+                    + " FocusUnitViewport=" + (stage == null ? "none" : (new Vector3(stage.anchoredPosition.x, stage.anchoredPosition.y, 0f) + unitLocal).ToString())
+                    + " VisibleTipBounds=viewport intersection");
+                viewportDiagnosticsLogged = true;
+            }
+#endif
+        }
     }
     // 
     // 変数 x, y で示された座標のルーム構造を読み込みなおす。

@@ -14,7 +14,7 @@ public class OrnamentBehaviour : MonoBehaviour
     public void Play(int _no)
     {
         string name = "orn" + _no;
-        GameObject.Find("Sphere/SphereCanvas/Stage/" + transform.name + "/" + name).SetActive(true);
+        transform.Find(name).gameObject.SetActive(true);
 
         Anim.SetBool(name, true);
     }

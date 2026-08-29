@@ -19,6 +19,18 @@ public class MapTip
 
     public Dictionary<string, TipBehaviour> tips { get; set; } = new Dictionary<string, TipBehaviour>();
 
+    public bool IsVisibleInViewport(TipBehaviour tip)
+    {
+        RectTransform viewport = Sphere == null ? null : Sphere.ViewportRect;
+        if (viewport == null || tip == null)
+            return false;
+
+        Bounds bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(viewport, tip.transform);
+        Rect rect = viewport.rect;
+        return bounds.max.x > rect.xMin && bounds.min.x < rect.xMax
+            && bounds.max.y > rect.yMin && bounds.min.y < rect.yMax;
+    }
+
     // Start is called before the first frame update
     void Start()
     {
@@ -134,10 +146,9 @@ public class MapTip
                         tips[tipName].setPos(posX, posY);
 
                         //はみ出た所は非表示
-                        if(posX > (int)Sphere.STAGE_WID || posY > (int)Sphere.STAGE_HEI) { 
+                        if (!IsVisibleInViewport(tips[tipName]))
                             tips[tipName].gameObject.SetActive(false);
-                        }
-                        
+
                         //背景がある場合・・
                         if (structkind == "background" && Sphere.sphere.backgroundWid > 0 && Sphere.sphere.backgroundHei > 0)
                         {
@@ -333,18 +344,7 @@ public class MapTip
                                 string tipName = getTipName(convertStructkind(structkind), x, y);
 
                                 //はみ出た所は非表示
-                                if (((scrX[structkind] + 1) * Sphere.TIP_SIZE) + posX <= 0 || ((scrX[structkind] - 2) * Sphere.TIP_SIZE) + posX >= (int)Sphere.STAGE_WID)
-                                {
-                                    tips[tipName].gameObject.SetActive(false);
-                                }
-                                else if(((scrY[structkind] + 1) * Sphere.TIP_SIZE) + posY <= 0 || ((scrY[structkind] - 2) * Sphere.TIP_SIZE) + posY >= (int)Sphere.STAGE_HEI)
-                                {
-                                    tips[tipName].gameObject.SetActive(false);
-                                }
-                                else
-                                {
-                                    tips[tipName].gameObject.SetActive(true);
-                                }
+                                tips[tipName].gameObject.SetActive(IsVisibleInViewport(tips[tipName]));
                             }
 
                             posY += Sphere.TIP_SIZE;
